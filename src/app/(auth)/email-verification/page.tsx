@@ -1,9 +1,9 @@
 import { GalleryVerticalEnd } from "lucide-react"
 
-import { LoginForm } from "../components/login-form"
+import { EmailVerificationForm } from "../components/email-verification-form"
 import { ModeToggle } from "@/components/ModeToggle"
 
-export default function LoginPage() {
+export default function EmailVerificationPage() {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
         <div className=" relative hidden lg:block">
@@ -20,7 +20,7 @@ export default function LoginPage() {
             <div className="absolute top-4 right-4">
                 <ModeToggle />
               </div>
-            <LoginForm />
+            <EmailVerificationForm />
           </div>
         </div>
       </div>
