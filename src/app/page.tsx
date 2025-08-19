@@ -16,7 +16,7 @@ export default function Home() {
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground">
           Welcome to the <span className="text-primary">RMS</span>
         </h1>
-        <p className="mt-2 text-xl md:text-2xl font-light text-muted-foreground">
+        <p className="mt-2 text-xl md:text-2xl font-light ">
           Resource Management System
         </p>
 
@@ -26,7 +26,7 @@ export default function Home() {
 
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8">
           {/* Login Button using asChild with Next.js Link */}
-          <Button asChild variant="outline" className="w-full md:w-auto px-8 py-6 text-xl font-semibold rounded-full shadow-lg transition-transform  text-amber-50 ">
+          <Button asChild variant="outline" className="w-full md:w-auto px-8 py-6 text-xl font-semibold rounded-full shadow-lg transition-transform  ">
             <Link href="/login">Log In</Link>
           </Button>
           {/* Sign Up Button using asChild with Next.js Link */}
