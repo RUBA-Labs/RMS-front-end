@@ -1,7 +1,5 @@
-import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import universityLogo from "../../../../assets/university-of-peradeniya-seeklogo.png"
-import { ModeToggle } from "@/components/ModeToggle";
 import { DropdownNotification } from "../components/DropdownNotification"
 
 export function DashboardHeader() {
@@ -18,6 +16,8 @@ export function DashboardHeader() {
                             width={40}
                             height={40}
                             className="w-full h-full object-contain"
+                            unoptimized
+                             
                         />
                     </div>
                     <h1 className="text-base sm:text-lg font-semibold tracking-tight whitespace-nowrap">

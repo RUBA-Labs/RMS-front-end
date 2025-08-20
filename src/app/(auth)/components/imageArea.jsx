@@ -19,6 +19,7 @@ export default function ImageArea() {
         alt="A vibrant visual representation"
         fill
         className="object-cover dark:brightness-[0.8]"
+        unoptimized 
       />
     </div>
   );
