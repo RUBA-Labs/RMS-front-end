@@ -1,5 +1,8 @@
+import { ElementType } from "react";
+
 export interface SidebarItem {
-  title: string;
-  url: string;
-  icon: React.ElementType; // The icon prop is a React component
+    title: string;
+    url: string;
+    // Update the 'icon' type to accept both string and ElementType
+    icon: string | ElementType;
 }
