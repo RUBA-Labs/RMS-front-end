@@ -1,4 +1,4 @@
-import { Calendar, Home, Inbox, Search, Settings } from "lucide-react"
+import * as React from "react"
 import { ModeToggle } from "@/components/ModeToggle";
 
 import {
@@ -12,36 +12,20 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-// Menu items.
-const items = [
-  {
-    title: "Home",
-    url: "#",
-    icon: Home,
-  },
-  {
-    title: "Inbox",
-    url: "#",
-    icon: Inbox,
-  },
-  {
-    title: "Calendar",
-    url: "#",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "#",
-    icon: Search,
-  },
-  {
-    title: "Settings",
-    url: "#",
-    icon: Settings,
-  },
-]
+// Define the type for a single menu item
+interface SidebarItem {
+  title: string;
+  url: string;
+  icon: React.ElementType; // Use React.ElementType for the icon component
+}
 
-export function AppSidebar() {
+// Define the props for the AppSidebar component
+interface AppSidebarProps {
+  items: SidebarItem[];
+}
+
+// Update the component to accept the items prop
+export function AppSidebar({ items }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarContent>
@@ -49,8 +33,6 @@ export function AppSidebar() {
           <SidebarGroupLabel className="flex items-center justify-between">
             <h1>Application</h1>
             <ModeToggle />
-                                 
-
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
