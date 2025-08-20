@@ -1,20 +1,20 @@
 import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
 //tabs
-import { Home } from "./TabContents/Home";
-import { Inbox } from "./TabContents/Inbox";
+import { Overview } from "./TabContents/Overview";
+import Users from "./TabContents/Users/Users";
 
 
 export default function Admin() {
    const menuItemsAdmin = [
-    { title: "Home", url: "#", icon: "Home", content: "Home" },
-    { title: "Inbox", url: "#", icon: "Inbox", content: "Inbox" },
+    { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
+    { title: "Users", url: "#", icon: "Users", content: "Users" },
   ];
 
   return (
     <DashboardPageProviders menuItems={menuItemsAdmin}>
-      <div title="Home"><Home /></div>
-      <div title="Inbox"><Inbox /></div>
+      <div title="Overview"><Overview /></div>
+      <div title="Users"><Users /></div>
 
 
     </DashboardPageProviders>

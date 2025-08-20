@@ -1,5 +1,3 @@
-
-
 import { LoginForm } from "../../components/login-form"
 import { ModeToggle } from "@/components/ModeToggle"
 import ImageArea from "../../components/imageArea"
