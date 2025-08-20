@@ -3,7 +3,6 @@
 "use client"
 
 import * as React from "react"
-import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu"
 import { IoMdNotificationsOutline } from "react-icons/io";
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 
