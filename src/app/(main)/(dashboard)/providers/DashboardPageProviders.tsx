@@ -27,7 +27,7 @@ export function DashboardPageProviders({ children, menuItems }: DashboardPagePro
 
   // Find the child component that matches the active menu item title
   const activeContent = Array.isArray(children) 
-    ? children.find((child: any) => child.props.title === activeItemTitle)
+    ? children.find((child: React.ReactNode) => (child as any).props.title === activeItemTitle)
     : children;
 
   return (

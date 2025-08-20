@@ -18,7 +18,7 @@ import {
 
 import { Notification } from "@/types/Notification"; 
 
-type Checked = DropdownMenuCheckboxItemProps["checked"]
+// type Checked = DropdownMenuCheckboxItemProps["checked"]
 
 export function DropdownNotification() {
   const [notifications, setNotifications] = React.useState<Notification[]>([
