@@ -30,8 +30,8 @@ export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps)
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between my-4 mt-8">
-            <h1 className="text-lg font-medium">Application</h1>
+          <SidebarGroupLabel className="flex items-center justify-between my-4 mt-8 " >
+            <h1 className="text-lg font-medium">Dashboard</h1>
             <ModeToggle />
           </SidebarGroupLabel>
           <SidebarGroupContent>
