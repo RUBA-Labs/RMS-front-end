@@ -10,7 +10,6 @@ import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
