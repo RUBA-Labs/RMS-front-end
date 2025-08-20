@@ -1,6 +1,5 @@
-"use client";
-
-import { useState } from "react";
+"use client"
+import { useState, isValidElement } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "../components/app-sidebar";
 import { DashboardHeader } from "../components/DashboardHeader";
@@ -17,6 +16,11 @@ const iconMap = {
   Settings: Settings,
 };
 
+// Define the type for the props of the child components
+interface ChildPropsWithTitle {
+  title?: string;
+}
+
 export function DashboardPageProviders({ children, menuItems }: DashboardPageProvidersProps) {
   // Use state to track the active menu item by its title
   const [activeItemTitle, setActiveItemTitle] = useState<string | null>(menuItems[0]?.title || null);
@@ -26,8 +30,14 @@ export function DashboardPageProviders({ children, menuItems }: DashboardPagePro
   };
 
   // Find the child component that matches the active menu item title
-  const activeContent = Array.isArray(children) 
-    ? children.find((child: React.ReactNode) => (child as any).props.title === activeItemTitle)
+  const activeContent = Array.isArray(children)
+    ? children.find((child) => {
+        // Use isValidElement with the correct generic type
+        if (isValidElement<ChildPropsWithTitle>(child)) {
+          return child.props.title === activeItemTitle;
+        }
+        return false;
+      })
     : children;
 
   return (
