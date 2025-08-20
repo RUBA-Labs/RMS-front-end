@@ -1,9 +1,9 @@
 import { GalleryVerticalEnd } from "lucide-react"
 
-import { PasswordResetForm } from "../components/password-reset-form"
+import { SignpForm } from "../../components/sign-up-form"
 import { ModeToggle } from "@/components/ModeToggle"
 
-export default function PasswordResetPage() {
+export default function SignupPage() {
   return (
      <div className="grid min-h-svh lg:grid-cols-2">
             <div className=" relative hidden lg:block">
@@ -20,7 +20,7 @@ export default function PasswordResetPage() {
                 <div className="absolute top-4 right-4">
                     <ModeToggle />
                   </div>
-                <PasswordResetForm/>
+                <SignpForm/>
               </div>
             </div>
           </div>
