@@ -2,17 +2,12 @@ import { GalleryVerticalEnd } from "lucide-react"
 
 import { SignpForm } from "../../components/sign-up-form"
 import { ModeToggle } from "@/components/ModeToggle"
+import ImageArea from "../../components/imageArea"
 
 export default function SignupPage() {
   return (
      <div className="grid min-h-svh lg:grid-cols-2">
-            <div className=" relative hidden lg:block">
-            <img
-              src="/1234-01.png"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.8] "
-            />
-          </div>
+            <ImageArea />
           <div className="flex flex-col gap-4 p-6 md:p-10">
             
             <div className="flex flex-1 items-center justify-center">
