@@ -1,46 +1,67 @@
+"use client"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SlEnvolope, SlLock } from "react-icons/sl"
+import { PasswordInput } from "./password-input"
+import Link from "next/link"
+import { useState } from "react"
+import { Progress } from "@/components/ui/progress"
 
 export function PasswordResetForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+
+  const [password, setPassword] = useState('');
+  
+    // Calculate progress based on password length
+    const progressValue = password.length >= 8 ? 100 : (password.length / 8) * 100;
   return (
     <form className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-2xl font-bold">Reset Your Password</h1>
       <p className="text-muted-foreground text-sm text-balance">
-          Enter your current and new password below to reset your account password
+          Welcome
         </p>
       </div>
-      
       <div className="grid gap-3">
-          <div className="flex items-center">
-            <Label htmlFor="password">Current Password</Label>
-        
-          </div>
-          <Input id="password" type="password" required />
-        </div>
+                <Label htmlFor="email"><SlEnvolope className="h-4 w-4" />Email</Label>
+                <Input id="email" type="email" placeholder="m@example.com" required />
+              </div>
+      
 
         <div className="grid gap-3">
           <div className="flex items-center">
-            <Label htmlFor="password">Enter New Password</Label>
+            <Label htmlFor="password"><SlLock className="h-4 w-4" />Enter New Password</Label>
         
           </div>
-          <Input id="password" type="password" required />
+          
+          <div className="flex flex-col gap-4">
+            <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Progress value={progressValue} />
+          </div>
         </div>
         <div className="grid gap-3">
           <div className="flex items-center">
-            <Label htmlFor="password">Confirm Your Password</Label>
+            <Label htmlFor="password"><SlLock className="h-4 w-4" />Confirm Your Password</Label>
         
           </div>
-          <Input id="password" type="password" required />
+          <PasswordInput />
         </div>
         <Button type="submit" className="w-full">
           Confirm
         </Button>
+        <div className="text-center text-sm">
+        Do you remember password?{" "}
+        <Link href="/login" className="underline underline-offset-4">
+          Login
+        </Link>
+      </div>
      
       
     </form>
