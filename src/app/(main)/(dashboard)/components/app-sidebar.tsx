@@ -1,5 +1,9 @@
-import * as React from "react"
+"use client";
+
+import * as React from "react";
 import { ModeToggle } from "@/components/ModeToggle";
+import { LucideProps } from "lucide-react";
+import { SidebarItem } from "@/types/DashboardPageProvidersProps";
 
 import {
   Sidebar,
@@ -10,22 +14,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-// Define the type for a single menu item
-interface SidebarItem {
-  title: string;
-  url: string;
-  icon: React.ElementType; // Use React.ElementType for the icon component
-}
-
-// Define the props for the AppSidebar component
+// Define the props for the AppSidebar component, including the new props
 interface AppSidebarProps {
   items: SidebarItem[];
+  // Fix the type to accept a full SidebarItem object
+  onMenuItemClick: (item: SidebarItem) => void;
+  iconMap: { [key: string]: React.ForwardRefExoticComponent<React.PropsWithoutRef<LucideProps> & React.RefAttributes<SVGSVGElement>> };
 }
 
-// Update the component to accept the items prop
-export function AppSidebar({ items }: AppSidebarProps) {
+// Update the component to accept all the required props
+export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps) {
   return (
     <Sidebar>
       <SidebarContent>
@@ -36,20 +36,27 @@ export function AppSidebar({ items }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const IconComponent = typeof item.icon === "string" 
+                  ? iconMap[item.icon] 
+                  : item.icon;
+                  
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      {/* Pass the entire 'item' object in the onClick handler */}
+                      <a href={item.url} onClick={() => onMenuItemClick(item)}>
+                        {IconComponent && <IconComponent />}
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
