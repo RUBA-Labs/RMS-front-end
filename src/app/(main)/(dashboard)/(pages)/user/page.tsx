@@ -1,16 +1,22 @@
-export default function User() {
-  return (
-    <main>
-      <h1>Welcome to the User Page</h1>
-      <p>This is where user-specific content will be displayed.</p>
-      {/* Additional user-related components can be added here */}
-      <div>
-        <h2>User Details</h2>
-        <p>Name: John Doe</p>
-        <p>Email: john.doe@example.com</p>
-      </div>
-      
-    </main>
+import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
+//tabs
+import { Home } from "./TabContents/Home";
+import { Inbox } from "./TabContents/Inbox";
+
+
+export default function User() {
+   const menuItemsUser = [
+    { title: "Home", url: "#", icon: "Home", content: "Home" },
+    { title: "Inbox", url: "#", icon: "Inbox", content: "Inbox" },
+  ];
+
+  return (
+    <DashboardPageProviders menuItems={menuItemsUser}>
+      <div title="Home"><Home /></div>
+      <div title="Inbox"><Inbox /></div>
+
+
+    </DashboardPageProviders>
   );
 }

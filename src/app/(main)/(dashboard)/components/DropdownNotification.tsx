@@ -3,14 +3,12 @@
 "use client"
 
 import * as React from "react"
-import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu"
 import { IoMdNotificationsOutline } from "react-icons/io";
 import { BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -19,7 +17,7 @@ import {
 
 import { Notification } from "@/types/Notification"; 
 
-type Checked = DropdownMenuCheckboxItemProps["checked"]
+// type Checked = DropdownMenuCheckboxItemProps["checked"]
 
 export function DropdownNotification() {
   const [notifications, setNotifications] = React.useState<Notification[]>([
