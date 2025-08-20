@@ -1,7 +1,7 @@
 import Image from "next/image"
 import universityLogo from "../../../../assets/university-of-peradeniya-seeklogo.png"
 import { DropdownNotification } from "../components/DropdownNotification"
-
+import { SidebarTrigger } from "@/components/ui/sidebar";
 export function DashboardHeader() {
     return (
         <header className="bg-white/10 backdrop-blur-sm px-4 md:px-6 lg:px-8 py-2 flex h-[var(--header-height)] shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-[var(--header-height)] rounded-2xl shadow-lg hover:shadow-2xl hover:border-gray-200">
@@ -29,6 +29,7 @@ export function DashboardHeader() {
 
                 {/* Right-aligned Buttons */}
                 <div className="ml-auto flex items-center gap-2 md:gap-4">
+                    <SidebarTrigger className="h-10 w-10 " />
                     <DropdownNotification />
               
                 </div>
