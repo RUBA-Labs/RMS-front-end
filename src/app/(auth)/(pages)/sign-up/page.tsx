@@ -1,5 +1,3 @@
-import { GalleryVerticalEnd } from "lucide-react"
-
 import { SignpForm } from "../../components/sign-up-form"
 import { ModeToggle } from "@/components/ModeToggle"
 import ImageArea from "../../components/imageArea"
