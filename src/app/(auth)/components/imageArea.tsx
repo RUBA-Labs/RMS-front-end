@@ -3,7 +3,7 @@ import React from "react";
 
 // The image is imported locally. Next.js automatically handles
 // the optimization and serves the image from a unique URL.
-import myImage from "../../../assets/1234-01.png";
+import myImage from "../../../assets/Asset 5@0.2x.png";
 
 export default function ImageArea() {
   return (
