@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { ModeToggle } from "@/components/ModeToggle";
-import { LucideProps } from "lucide-react";
+import { ChevronUp, LucideProps, User2 } from "lucide-react";
 import { SidebarItem } from "@/types/DashboardPageProvidersProps";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Define the props for the AppSidebar component, including the new props
 interface AppSidebarProps {
@@ -35,12 +37,13 @@ export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps)
             <ModeToggle />
           </SidebarGroupLabel>
           <SidebarGroupContent>
+
             <SidebarMenu>
               {items.map((item) => {
-                const IconComponent = typeof item.icon === "string" 
-                  ? iconMap[item.icon] 
+                const IconComponent = typeof item.icon === "string"
+                  ? iconMap[item.icon]
                   : item.icon;
-                  
+
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
@@ -54,9 +57,40 @@ export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps)
                 );
               })}
             </SidebarMenu>
+
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton>
+                  <User2 /> Username
+                  <ChevronUp className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-popper-anchor-width]"
+              >
+                <DropdownMenuItem>
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    // Add sign out logic here if needed (e.g., clear session)
+                    window.location.href = "/login";
+                  }}
+                >
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }
