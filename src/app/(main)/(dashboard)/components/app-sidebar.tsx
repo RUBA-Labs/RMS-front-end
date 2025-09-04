@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ModeToggle } from "@/components/ModeToggle";
 import { ChevronUp, LucideProps, User2 } from "lucide-react";
-import { SidebarItem } from "@/types/DashboardPageProvidersProps";
+import { SidebarItem } from "@/types/SidebarItem";
 
 import {
   Sidebar,
