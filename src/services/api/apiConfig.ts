@@ -12,3 +12,7 @@ export const AUTH_API_URL = {login:`${API_BASE_URL}auth/login`};
 
 // session module in the backend
 export const SESSION_API_URL_IS_VALID = `${API_BASE_URL}session/is-valid`;
+export const SESSION_API_URL_LOGOUT_THIS_DEVICE = `${API_BASE_URL}session/logout-from-this-device/logout`;
+export const SESSION_API_URL_LOGOUT_ALL_DEVICES = `${API_BASE_URL}session`;
+export const SESSION_API_URL_GET_USER_SESSIONS = `${API_BASE_URL}session`;
+export const SESSION_API_URL_LOGOUT_SPECIFIC_DEVICE = (deviceId: string) => `${API_BASE_URL}session/${deviceId}`;
