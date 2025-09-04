@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter for client-side redirection
-import { getAuthData } from "@/services/api/Auth/auth";
+import { useRouter } from 'next/navigation';
+import { getAuthData, removeAuthData } from "@/services/api/Auth/auth";
+import { SESSION_API_URL_IS_VALID } from '@/services/api/apiConfig';
+import axios from 'axios';
 
 // Define the shape of the props for our component
 interface AuthProviderProps {
@@ -13,8 +15,8 @@ interface AuthProviderProps {
 
 /**
  * A client-side component to handle role-based access control.
- * It checks the user's role against a list of allowed roles.
- * * @param children The components to render if the user has permission.
+ * It checks the user's role and validates the JWT token with the backend.
+ * @param children The components to render if the user has permission.
  * @param allowedRoles An array of roles that are allowed to view the content.
  * @param isEnabled A boolean flag to enable or disable the role check. If false, content is always shown.
  */
@@ -22,29 +24,63 @@ export function AuthProvider({ children, allowedRoles, isEnabled }: AuthProvider
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   
-  const router = useRouter(); // Initialize the router
+  const router = useRouter();
 
-  // Use a single useEffect to check authentication status on mount
   useEffect(() => {
-    const authData = getAuthData();
-    if (authData && authData.user) {
-      setUserRole(authData.user.role);
-    } else {
-      // If no auth data is found, redirect the user to the login page.
-      // This protects the route from unauthenticated access.
-      router.push('/login');
-    }
-    setIsAuthReady(true);
-  }, [router]); // Include router in the dependency array
+    const validateToken = async () => {
+      const authData = getAuthData();
 
-  // If the feature is disabled, render the children directly without any checks
+      if (!authData || !authData.accessToken) {
+        removeAuthData(); // Ensure any bad data is cleared
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const response = await axios.get(
+          SESSION_API_URL_IS_VALID, 
+          {
+            headers: {
+              Authorization: `Bearer ${authData.accessToken}`,
+            },
+          }
+        );
+
+        // console.log('Session validation response:', response.data);
+
+        if (response.data?.isValid) {
+          setUserRole(authData.user.role);
+        } else {
+          // If the backend says the token is not valid, clear and redirect
+          removeAuthData();
+          router.push('/login');
+        }
+
+      } catch (error) {
+        // If the API call fails (e.g., 401 Unauthorized), clear and redirect
+        console.error('Session validation failed:', error);
+        removeAuthData();
+        router.push('/login');
+      } finally {
+        setIsAuthReady(true);
+      }
+    };
+
+    if (isEnabled) {
+      validateToken();
+    } else {
+      setIsAuthReady(true);
+    }
+  }, [router, isEnabled]);
+
+  // If the feature is disabled, render the children directly
   if (!isEnabled) {
     return <>{children}</>;
   }
 
-  // Wait for the authentication data to be loaded from localStorage
+  // Wait for the authentication data to be loaded and validated
   if (!isAuthReady) {
-    return <div className='flex justify-center items-center h-screen text-2xl'><h1 >Loading...</h1></div>; // You can replace this with a more sophisticated spinner or loader
+    return <div className='flex justify-center items-center h-screen text-2xl'><h1 >Loading...</h1></div>;
   }
 
   // If the user's role is not found, or it's not in the list of allowed roles,

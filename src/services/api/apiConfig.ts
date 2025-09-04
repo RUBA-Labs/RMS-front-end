@@ -9,3 +9,6 @@ export const API_BASE_URL = 'http://localhost:3001/';
 
 //auth module in the backend
 export const AUTH_API_URL = {login:`${API_BASE_URL}auth/login`};
+
+// session module in the backend
+export const SESSION_API_URL_IS_VALID = `${API_BASE_URL}session/is-valid`;
