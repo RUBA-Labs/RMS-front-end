@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ModeToggle } from "@/components/ModeToggle";
 import { ChevronUp, LucideProps, User2 } from "lucide-react";
-import { SidebarItem } from "@/types/DashboardPageProvidersProps";
+import { SidebarItem } from "@/types/SidebarItem";
 
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { SignOut } from "./SignOut";
 
 // Define the props for the AppSidebar component, including the new props
 interface AppSidebarProps {
@@ -78,14 +79,7 @@ export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps)
                 <DropdownMenuItem>
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    // Add sign out logic here if needed (e.g., clear session)
-                    window.location.href = "/login";
-                  }}
-                >
-                  <span>Sign out</span>
-                </DropdownMenuItem>
+                <SignOut/>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
