@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { SESSION_API_URL_GET_USER_SESSIONS } from '@/services/api/apiConfig';
 import { getAuthData, removeAuthData } from '@/services/api/Auth/auth';
-import { jwtDecode } from 'jwt-decode';
 
 /**
  * Defines the structure for a user session object.
@@ -42,7 +41,7 @@ export const getUserSessions = async (): Promise<UserSession[]> => {
       },
     });
 
-    const sessions = response.data.map((session: any) => {
+    const sessions = response.data.map((session: UserSession) => {
       // Regex to find content inside the first set of parentheses
       const match = session.userAgent.match(/\(([^)]+)\)/);
       const deviceName = match ? match[1] : 'Unknown Device';
@@ -53,14 +52,8 @@ export const getUserSessions = async (): Promise<UserSession[]> => {
       };
     });
 
-    // // Functionality to remove the current device from the sessions list
-    // const currentDeviceId = jwtDecode<{ jti: string }>(accessToken).jti;
-    // const filteredSessions = sessions.filter((session: UserSession) => session.id !== currentDeviceId);
-    // return filteredSessions; 
-
     return sessions;
 
-  
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {
