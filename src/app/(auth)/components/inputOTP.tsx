@@ -1,13 +1,15 @@
+"use client";
+
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
-} from "@/components/ui/input-otp"
+} from "@/components/ui/input-otp";
 
-export function InputOTPDemo() {
+export function InputOTPDemo({ value, onValueChange }: { value: string; onValueChange: (value: string) => void }) {
   return (
-    <InputOTP maxLength={6}>
+    <InputOTP maxLength={6} value={value} onChange={onValueChange}>
       <InputOTPGroup>
         <InputOTPSlot index={0} />
         <InputOTPSlot index={1} />
@@ -20,5 +22,5 @@ export function InputOTPDemo() {
         <InputOTPSlot index={5} />
       </InputOTPGroup>
     </InputOTP>
-  )
+  );
 }
