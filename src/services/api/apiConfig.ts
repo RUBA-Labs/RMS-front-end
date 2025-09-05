@@ -24,3 +24,7 @@ export const EMAIL_VALIDATION_API_URL_VERIFY_OTP = `${API_BASE_URL}email-validat
 
 //user module in the backend
 export const USER_API_URL_CREATE_USER = `${API_BASE_URL}user`;
+
+//Password Reset
+export const PASSWORD_RESET_API_URL_SEND_OTP = `${API_BASE_URL}password-reset/request`;
+export const PASSWORD_RESET_API_URL_VERIFY_OTP = `${API_BASE_URL}password-reset/reset`;
