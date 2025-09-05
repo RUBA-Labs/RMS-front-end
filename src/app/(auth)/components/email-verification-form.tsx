@@ -89,9 +89,7 @@ export function EmailVerificationForm({
       setAlert({
         visible: true,
         title: "Verification Failed",
-        message: typeof error === "object" && error !== null && "message" in error && typeof (error as any).message === "string"
-          ? (error as any).message
-          : "An unknown error occurred.",
+        message: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -116,9 +114,7 @@ export function EmailVerificationForm({
       setAlert({
         visible: true,
         title: "Resend Failed",
-        message: typeof error === "object" && error !== null && "message" in error && typeof (error as any).message === "string"
-          ? (error as any).message
-          : "An unknown error occurred.",
+        message: error instanceof Error ? error.message : "An unknown error occurred.",
         variant: "destructive",
       });
     } finally {
