@@ -21,3 +21,6 @@ export const SESSION_API_URL_LOGOUT_SPECIFIC_DEVICE = (deviceId: string) => `${A
 // email validation module in the backend
 export const EMAIL_VALIDATION_API_URL_SEND_OTP = `${API_BASE_URL}email-validation/send-otp`;
 export const EMAIL_VALIDATION_API_URL_VERIFY_OTP = `${API_BASE_URL}email-validation/verify-otp`;
+
+//user module in the backend
+export const USER_API_URL_CREATE_USER = `${API_BASE_URL}user`;

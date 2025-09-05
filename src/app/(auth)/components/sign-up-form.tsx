@@ -22,7 +22,7 @@ export function SignpForm({
   ...props
 }: React.ComponentProps<"form">) {
 
-  const [name, setName] = useState('');
+  const [fullName, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,7 +62,7 @@ export function SignpForm({
       return;
     }
 
-    saveUserData({ name, email, password });
+    saveUserData({ fullName, email, password });
     reqSendTheOtp(email);
       
 
@@ -86,7 +86,7 @@ export function SignpForm({
             type="text"
             placeholder="H.M.C.K.Hearth"
             required
-            value={name}
+            value={fullName}
             onChange={(e) => setName(e.target.value)}
           />
         </div>

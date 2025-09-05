@@ -1,6 +1,6 @@
 // Defines the structure for user data to ensure type safety.
 type UserData = {
-  name: string;
+  fullName: string;
   email: string;
   password?: string; // Password is optional for scenarios where it might not be needed.
 };

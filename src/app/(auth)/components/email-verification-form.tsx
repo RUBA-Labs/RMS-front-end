@@ -9,6 +9,7 @@ import { AlertCircle, CheckCircle2, XIcon } from "lucide-react";
 import { InputOTPDemo } from "./inputOTP";
 import { verifyOtp } from "@/services/api/EmailValidation/verifyOTP";
 import { reqSendTheOtp } from "@/services/api/EmailValidation/reqSendTheOtp";
+import { createUser } from "@/services/api/User/CreateUser"; // Import the createUser function
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
@@ -66,8 +67,13 @@ export function EmailVerificationForm({
     }
 
     try {
-      const response = await verifyOtp(otp);
-      console.log("OTP verification successful:", response);
+      // Step 1: Verify the OTP with the backend
+      const verificationResponse = await verifyOtp(otp);
+      console.log("OTP verification successful:", verificationResponse);
+
+      // Step 2: If OTP verification succeeds, create the user
+      const creationResponse = await createUser();
+      console.log("User creation successful:", creationResponse);
 
       setAlert({
         visible: true,
@@ -79,7 +85,7 @@ export function EmailVerificationForm({
       // Redirect to a success page or login page
       router.push("/login");
     } catch (error) {
-      console.error("OTP verification failed:", error);
+      console.error("User verification or creation failed:", error);
       setAlert({
         visible: true,
         title: "Verification Failed",
