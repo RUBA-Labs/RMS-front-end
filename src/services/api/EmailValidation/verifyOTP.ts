@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { EMAIL_VALIDATION_API_URL_VERIFY_OTP } from "@/services/api/apiConfig";
-import { log } from 'console';
 
 // Defines the structure for user data stored in local storage.
 type UserData = {
