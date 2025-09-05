@@ -13,6 +13,7 @@ export const getDashboardPathByRole = (role: string): string => {
     case Role.EXAM_CLAIMS_ADMIN:
     case Role.LAB_ALLOCATION_ADMIN:
     case Role.DEVELOPER:
+    case Role.USER:
       return `/${role}`;
     case Role.STUDENT:
     case Role.FIRST_YEAR_STUDENT:
