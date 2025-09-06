@@ -5,7 +5,7 @@
  * The base URL for your API.
  * Replace 'https://api.example.com' with your actual API endpoint.
  */
-export const API_BASE_URL = 'http://localhost:3001/';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 //auth module in the backend
 export const AUTH_API_URL = {login:`${API_BASE_URL}auth/login`};
