@@ -100,7 +100,6 @@ export const columns: ColumnDef<Payment>[] = [
                                 <button
                                     onClick={() => {
                                         // Implement your edit logic here, e.g., open a modal
-                                        console.log("Editing user:", row.original.name);
                                     }}
                                     className="text-blue-500 hover:text-blue-700"
                                     aria-label="Edit user"
@@ -114,7 +113,6 @@ export const columns: ColumnDef<Payment>[] = [
                                 <button
                                     onClick={() => {
                                         // Implement your delete logic here, e.g., show a confirmation dialog
-                                        console.log("Deleting user:", row.original.name);
                                     }}
                                     className="text-red-500 hover:text-red-700"
                                     aria-label="Delete user"

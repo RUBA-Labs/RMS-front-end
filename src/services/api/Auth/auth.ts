@@ -21,7 +21,6 @@ export const saveAuthData = (data: AuthData): void => {
   try {
     const serializedData = JSON.stringify(data);
     localStorage.setItem(AUTH_STORAGE_KEY, serializedData);
-    console.log('Authentication data saved to localStorage.');
   } catch (error) {
     console.error('Failed to save auth data to localStorage:', error);
   }
@@ -50,7 +49,6 @@ export const getAuthData = (): AuthData | null => {
 export const removeAuthData = (): void => {
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
-    console.log('Authentication data removed from localStorage.');
   } catch (error) {
     console.error('Failed to remove auth data from localStorage:', error);
   }
