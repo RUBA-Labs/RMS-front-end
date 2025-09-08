@@ -1,19 +1,20 @@
 import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
+
 //tabs
-import { Home } from "./TabContents/Home";
+import { Overview } from "../lab-allocation-admin/TabContents/Overview";
 import { Inbox } from "./TabContents/Inbox";
 
 
 export default function LabAllocationAdmin() {
    const menuItemsLabAllocationAdmin = [
-    { title: "Home", url: "#", icon: "Home", content: "Home" },
+    { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
     { title: "Inbox", url: "#", icon: "Inbox", content: "Inbox" },
   ];
 
   return (
     <DashboardPageProviders menuItems={menuItemsLabAllocationAdmin}>
-      <div title="Home"><Home /></div>
+      <div title="Overview"><Overview /></div>
       <div title="Inbox"><Inbox /></div>
 
 
