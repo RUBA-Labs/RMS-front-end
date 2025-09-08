@@ -28,3 +28,9 @@ export const USER_API_URL_CREATE_USER = `${API_BASE_URL}user`;
 //Password Reset
 export const PASSWORD_RESET_API_URL_SEND_OTP = `${API_BASE_URL}password-reset/request`;
 export const PASSWORD_RESET_API_URL_VERIFY_OTP = `${API_BASE_URL}password-reset/reset`;
+
+//notification module in the backend
+export const NOTIFICATION_API_URL_GET_NOTIFICATIONS = `${API_BASE_URL}notification`;
+export const NOTIFICATION_API_URL_MARK_AS_READ = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/read`;
+export const NOTIFICATION_API_URL_MARK_AS_UNREAD = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/unread`;
+export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}`;

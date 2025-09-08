@@ -53,3 +53,5 @@ export const removeAuthData = (): void => {
     console.error('Failed to remove auth data from localStorage:', error);
   }
 };
+
+export type { AuthData };

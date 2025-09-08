@@ -1,5 +1,3 @@
-// components/ui/DropdownNotification.tsx
-
 "use client"
 
 import * as React from "react"
@@ -15,97 +13,186 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { Notification } from "@/types/Notification"; 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
-// type Checked = DropdownMenuCheckboxItemProps["checked"]
+// Import the notification service functions
+import { getNotifications, Notification } from "@/services/api/Notification/getnotifications";
+import { markNotificationAsRead } from "@/services/api/Notification/notificationRead";
+import { markNotificationAsUnread } from "@/services/api/Notification/notificationUnread";
+import { getFullNotificationById, FullNotification } from "@/services/api/Notification/fullNotificationById";
 
 export function DropdownNotification() {
-  const [notifications, setNotifications] = React.useState<Notification[]>([
-    {
-      id: "1",
-      message: "You have a new message from the Faculty of Arts.",
-      isRead: false,
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: "2",
-      message: "Your application for the art history course has been approved.",
-      isRead: false,
-      timestamp: new Date(Date.now() - 7200000),
-    },
-    {
-      id: "3",
-      message: "Reminder: Your project is due tomorrow.",
-      isRead: true,
-      timestamp: new Date(Date.now() - 86400000),
-    },
-  ]);
+  const [notifications, setNotifications] = React.useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = React.useState<boolean>(true);
+  const [isError, setIsError] = React.useState<boolean>(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState<boolean>(false);
+  const [selectedNotification, setSelectedNotification] = React.useState<FullNotification | null>(null);
+  const [isModalLoading, setIsModalLoading] = React.useState<boolean>(false);
 
-  const toggleReadStatus = (id: string) => {
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      setIsLoading(true);
+      setIsError(false);
+      try {
+        const data = await getNotifications();
+        setNotifications(data);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
+  const handleNotificationClick = async (id: string) => {
+    setIsModalLoading(true);
+    // Optimistically update the local state to show it as read immediately
     setNotifications(prevNotifications =>
       prevNotifications.map(notification =>
-        notification.id === id ? { ...notification, isRead: !notification.isRead } : notification
+        notification.id === id ? { ...notification, isRead: true } : notification
       )
     );
+    try {
+      // Mark as read on the backend
+      await markNotificationAsRead(id);
+      // Fetch the full details for the modal
+      const fullDetails = await getFullNotificationById(id);
+      setSelectedNotification(fullDetails);
+      setIsDialogOpen(true);
+    } catch (error) {
+      console.error("Failed to get full notification details:", error);
+      // Revert the local state if the backend call fails
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification.id === id ? { ...notification, isRead: false } : notification
+        )
+      );
+      // You might want to display a user-facing error here
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
+  const handleToggleReadStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      if (currentStatus) {
+        await markNotificationAsUnread(id);
+      } else {
+        await markNotificationAsRead(id);
+      }
+
+      setNotifications(prevNotifications =>
+        prevNotifications.map(notification =>
+          notification.id === id ? { ...notification, isRead: !notification.isRead } : notification
+        )
+      );
+    } catch (error) {
+      console.error("Failed to toggle notification read status on the backend:", error);
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
-          <IoMdNotificationsOutline className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-              {unreadCount}
-            </span>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80 p-1" align="end">
-        <DropdownMenuLabel className="p-2">
-          <div className="flex items-center justify-between">
-            Notifications
-            <span className="text-sm text-muted-foreground">{unreadCount > 0 ? `${unreadCount} unread` : 'No new notifications'}</span>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        {notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <div 
-              key={notification.id} 
-              className={`flex items-start justify-between p-2 rounded-md ${!notification.isRead ? 'bg-accent dark:bg-accent/40' : 'bg-transparent'} transition-colors hover:bg-muted dark:hover:bg-muted/50`}
-            >
-              <div className="flex flex-col gap-0.5">
-                <span className={`text-sm font-medium ${!notification.isRead ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
-                  {notification.message}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {notification.timestamp.toLocaleString()}
-                </span>
-              </div>
-              <Button 
-                onClick={() => toggleReadStatus(notification.id)} 
-                variant="ghost" 
-                size="icon" 
-                className="w-8 h-8 flex-shrink-0 ml-2"
-              >
-                {notification.isRead ? (
-                  <BsEyeFill className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <BsEyeSlashFill className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                )}
-              </Button>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon" className="relative">
+            <IoMdNotificationsOutline className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 inline-flex items-center justify-center h-4 w-4 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-80 p-1" align="end">
+          <DropdownMenuLabel className="p-2">
+            <div className="flex items-center justify-between">
+              Notifications
+              <span className="text-sm text-muted-foreground">{unreadCount > 0 ? `${unreadCount} unread` : 'No new notifications'}</span>
             </div>
-          ))
-        ) : (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            No notifications to display.
-          </div>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          {isLoading ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Loading notifications...
+            </div>
+          ) : isError ? (
+            <div className="p-4 text-center text-sm text-destructive">
+              Failed to load notifications.
+            </div>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <div 
+                key={notification.id} 
+                className={`flex items-start justify-between p-2 rounded-md cursor-pointer ${!notification.isRead ? 'bg-accent dark:bg-accent/40' : 'bg-transparent'} transition-colors hover:bg-muted dark:hover:bg-muted/50`}
+                onClick={() => handleNotificationClick(notification.id)}
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className={`text-sm font-medium ${!notification.isRead ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}>
+                    {notification.message}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(notification.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}
+                  </span>
+                </div>
+                <Button 
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent the parent div's onClick from firing
+                    handleToggleReadStatus(notification.id, notification.isRead);
+                  }} 
+                  variant="ghost" 
+                  size="icon" 
+                  className="w-8 h-8 flex-shrink-0 ml-2"
+                >
+                  {notification.isRead ? (
+                    <BsEyeFill className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <BsEyeSlashFill className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  )}
+                </Button>
+              </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No notifications to display.
+            </div>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{selectedNotification?.message || "Loading..."}</DialogTitle>
+          </DialogHeader>
+          {isModalLoading ? (
+            <div className="text-center text-muted-foreground py-4">Loading full notification details...</div>
+          ) : (
+            selectedNotification && (
+              <div className="grid gap-4 py-4">
+                <DialogDescription>
+                  {selectedNotification.description}
+                </DialogDescription>
+                <div className="text-xs text-right text-muted-foreground mt-4">
+                  {new Date(selectedNotification.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}
+                </div>
+              </div>
+            )
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
