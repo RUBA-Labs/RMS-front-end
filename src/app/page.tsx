@@ -31,7 +31,7 @@ export default function Home() {
           </Button>
           {/* Sign Up Button using asChild with Next.js Link */}
           <Button asChild variant="ghost" className="w-full md:w-auto px-8 py-6 text-xl font-semibold rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ">
-            <Link href="/signup">Sign Up</Link>
+            <Link href="/sign-up">Sign Up</Link>
           </Button>
         </div>
       </div>
