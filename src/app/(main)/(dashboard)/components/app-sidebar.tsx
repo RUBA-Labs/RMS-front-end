@@ -75,7 +75,11 @@ export function AppSidebar({ items, onMenuItemClick, iconMap }: AppSidebarProps)
                 side="top"
                 className="w-[--radix-popper-anchor-width]"
               >
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.location.href = "/profile";
+                  }}
+                >
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
