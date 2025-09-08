@@ -1,17 +1,16 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useState } from "react"
+import * as React from "react";
+import { useState, forwardRef } from "react";
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string;
 }
 
-const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
+const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
   ({ className, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
 
@@ -25,7 +24,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           id="password"
           type={showPassword ? "text" : "password"}
           required
-          className={cn("pr-10", className)} // The pr-10 class is crucial for icon spacing
+          className={cn("pr-10", className)}
           {...props}
           ref={ref}
         />
@@ -43,9 +42,9 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           </button>
         </div>
       </div>
-    )
+    );
   }
-)
-PasswordInput.displayName = "PasswordInput"
+);
+PasswordInput.displayName = "PasswordInput";
 
-export { PasswordInput }
+export { PasswordInput };

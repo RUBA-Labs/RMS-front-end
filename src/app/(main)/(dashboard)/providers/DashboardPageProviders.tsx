@@ -4,7 +4,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "../components/app-sidebar";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { MainArea } from "../components/main-container";
-import { DashboardPageProvidersProps, SidebarItem } from "@/types/DashboardPageProvidersProps";
+import { DashboardPageProvidersProps } from "@/types/DashboardPageProvidersProps";
+import { SidebarItem } from "@/types/SidebarItem";
 import { Calendar, Home, Inbox, Search, Settings ,LayoutGrid ,Users} from "lucide-react";
 
 

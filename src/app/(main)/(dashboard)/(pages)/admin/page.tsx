@@ -1,4 +1,7 @@
 import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
+import { AuthProvider } from "@/providers/AuthProvider";
+import { Role } from "@/services/api/Auth/roles";
+
 
 //tabs
 import { Overview } from "./TabContents/Overview";
@@ -12,11 +15,22 @@ export default function Admin() {
   ];
 
   return (
+
+
+    <AuthProvider allowedRoles={[
+      Role.ADMIN,
+      Role.DEVELOPER,
+      Role.TIME_TABLE_ADMIN,
+      Role.EXAM_CLAIMS_ADMIN,
+      Role.LAB_ALLOCATION_ADMIN
+    ]} isEnabled={true}>
+
     <DashboardPageProviders menuItems={menuItemsAdmin}>
       <div title="Overview"><Overview /></div>
       <div title="Users"><Users /></div>
 
 
     </DashboardPageProviders>
+    </AuthProvider>
   );
 }
