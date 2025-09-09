@@ -68,12 +68,10 @@ export function EmailVerificationForm({
 
     try {
       // Step 1: Verify the OTP with the backend
-      const verificationResponse = await verifyOtp(otp);
-      console.log("OTP verification successful:", verificationResponse);
+      await verifyOtp(otp);
 
       // Step 2: If OTP verification succeeds, create the user
-      const creationResponse = await createUser();
-      console.log("User creation successful:", creationResponse);
+      await createUser();
 
       setAlert({
         visible: true,

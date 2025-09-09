@@ -16,11 +16,8 @@ export async function logoutSpecificDevices(selectedDevices: string[]): Promise<
   }
 
   if (selectedDevices.length === 0) {
-    console.log("No devices selected for logout. Skipping API calls.");
     return;
   }
-
-  console.log(`Attempting to sign out from the following devices: ${selectedDevices.join(', ')}`);
 
   for (const deviceId of selectedDevices) {
     try {
@@ -30,11 +27,9 @@ export async function logoutSpecificDevices(selectedDevices: string[]): Promise<
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      console.log(`Successfully signed out of device with ID: ${deviceId}`);
     } catch (error) {
       console.error(`An error occurred while signing out of device with ID: ${deviceId}`, error);
     }
   }
 
-  console.log("Finished attempting to sign out from all specified devices.");
 }
