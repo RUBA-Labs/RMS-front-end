@@ -74,7 +74,7 @@ export function SignpForm({
       saveUserData({ fullName, email, password });
       router.push("/email-verification");
     } catch (error) {
-      const errorMessage = (error as any).message || "An unknown error occurred.";
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
       if (errorMessage.includes("Email already exists.")) {
         setAlert({
           visible: true,
