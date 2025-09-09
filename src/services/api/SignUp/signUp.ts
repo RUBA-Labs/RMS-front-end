@@ -10,7 +10,6 @@ export const saveUserData = (userData: UserData) => {
   try {
     // Stringify the user data object and save it to local storage.
     localStorage.setItem('signupData', JSON.stringify(userData));
-    console.log('User data saved to local storage.');
   } catch (error) {
     console.error('Failed to save data to local storage:', error);
   }

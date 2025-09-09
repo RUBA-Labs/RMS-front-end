@@ -34,9 +34,6 @@ export const verifyOtp = async (otp: string): Promise<VerifyOtpResponse> => {
       secret: secret,
     };
 
-    console.log('Request Body:', requestBody);
-    
-
     // Send the POST request using Axios.
     const response = await axios.post<VerifyOtpResponse>(EMAIL_VALIDATION_API_URL_VERIFY_OTP, requestBody);
 

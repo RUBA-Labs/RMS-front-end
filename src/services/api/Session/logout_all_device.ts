@@ -25,7 +25,6 @@ export async function logoutAllDevices(): Promise<void> {
       },
     });
 
-    console.log('Successfully signed out of all devices.');
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 401) {

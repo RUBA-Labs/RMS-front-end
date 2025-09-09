@@ -21,34 +21,40 @@ export function SignpForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
-
   const [fullName, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [alert, setAlert] = useState({
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    showLoginButton?: boolean;
+    variant: "destructive" | "default";
+  }>({
     visible: false,
     title: '',
-    message: ''
+    message: '',
+    variant: "destructive"
   });
   
   const router = useRouter();
 
-
   // Calculate progress based on password length
   const progressValue = password.length >= 8 ? 100 : (password.length / 8) * 100;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     // Reset any previous alerts
-    setAlert({ visible: false, title: '', message: '' });
+    setAlert({ visible: false, title: '', message: '', variant: "destructive" });
 
     if (password.length < 8) {
       setAlert({
         visible: true,
         title: "Weak Password",
-        message: "Password must be at least 8 characters long."
+        message: "Password must be at least 8 characters long.",
+        variant: "destructive"
       });
       return;
     }
@@ -57,17 +63,35 @@ export function SignpForm({
       setAlert({
         visible: true,
         title: "Password Mismatch",
-        message: "The passwords you entered do not match."
+        message: "The passwords you entered do not match.",
+        variant: "destructive"
       });
       return;
     }
 
-    saveUserData({ fullName, email, password });
-    reqSendTheOtp(email);
-      
-
-    // Redirect to the email verification page using the Next.js router
-    router.push("/email-verification");
+    try {
+      await reqSendTheOtp(email);
+      saveUserData({ fullName, email, password });
+      router.push("/email-verification");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      if (errorMessage.includes("Email already exists.")) {
+        setAlert({
+          visible: true,
+          title: "Account Exists",
+          message: "You already have an account.",
+          showLoginButton: true,
+          variant: "destructive"
+        });
+      } else {
+        setAlert({
+          visible: true,
+          title: "Sign-up Failed",
+          message: errorMessage,
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   return (
@@ -76,7 +100,6 @@ export function SignpForm({
         <h1 className="text-2xl font-bold">Sign-up to Account</h1>
         <p className="text-muted-foreground text-sm text-balance">Welcome</p>
       </div>
-
       
       <div className="grid gap-6">
         <div className="grid gap-3">
@@ -124,21 +147,33 @@ export function SignpForm({
           />
         </div>
         {alert.visible && (
-        <Alert variant="destructive" className="">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>{alert.title}</AlertTitle>
-          <AlertDescription>{alert.message}</AlertDescription>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute top-2 right-2 h-6 w-6"
-            onClick={() => setAlert({ visible: false, title: '', message: '' })}
-          >
-            <XIcon className="h-4 w-4 text-gray-500" />
-          </Button>
-        </Alert>
-      )}
+          <Alert variant={alert.variant} className="">
+            <AlertCircle className="" />
+            <AlertTitle>{alert.title}</AlertTitle>
+            <AlertDescription>
+              {alert.message}
+              {alert.showLoginButton && (
+                <div className="">
+                  <Link href="/login" passHref>
+                   <Button variant="link" className="p-0 h-auto underline underline-offset-4">
+Click to login 
+                   </Button>
+                      
+                  </Link>
+                </div>
+              )}
+            </AlertDescription>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6"
+              onClick={() => setAlert({ visible: false, title: '', message: '', variant: "destructive" })}
+            >
+              <XIcon className="h-4 w-4 text-gray-500" />
+            </Button>
+          </Alert>
+        )}
 
         <Button type="submit" className="w-full">
           Sign up
