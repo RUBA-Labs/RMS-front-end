@@ -1,7 +1,7 @@
 export function MySchedule(){
     return(
         <>
-        <h1>My Schedule</h1>
+        <h1>Personalized schedule</h1>
         </>
     )
 }
