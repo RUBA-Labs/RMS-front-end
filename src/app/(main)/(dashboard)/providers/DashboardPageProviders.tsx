@@ -6,7 +6,7 @@ import { DashboardHeader } from "../components/DashboardHeader";
 import { MainArea } from "../components/main-container";
 import { DashboardPageProvidersProps } from "@/types/DashboardPageProvidersProps";
 import { SidebarItem } from "@/types/SidebarItem";
-import { Calendar, Home, Inbox, Search, Settings ,LayoutGrid ,Users} from "lucide-react";
+import { Calendar, Home, Inbox, Search, Settings ,LayoutGrid ,Users,Wallet} from "lucide-react";
 
 
 
@@ -19,6 +19,7 @@ const iconMap = {
   Settings: Settings,
   Users:Users ,
   Overview :LayoutGrid,
+  ExamClaims:Wallet,
 };
 
 // Define the type for the props of the child components
