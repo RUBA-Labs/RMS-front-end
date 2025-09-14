@@ -20,8 +20,9 @@ const iconMap = {
   Users:Users ,
   Overview :LayoutGrid,
   LabManagement :MonitorCog,
-  Reservation :BookCheck,
+  LabBooking :BookCheck,
   Scheduling :CalendarCheck,
+  
 };
 
 // Define the type for the props of the child components
