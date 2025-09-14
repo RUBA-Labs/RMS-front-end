@@ -1,29 +1,12 @@
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuIndicator,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-} from "@/components/ui/navigation-menu"
+//import Calendar from "@/components/Calendar";
 
-export function MySchedule(){
-    return(
-        <>
-        <NavigationMenu>
-            <NavigationMenuList>
-                <NavigationMenuItem>
-                    <NavigationMenuTrigger>Item One</NavigationMenuTrigger>
-                        <NavigationMenuContent>
-                             
-                        </NavigationMenuContent>
-                    </NavigationMenuItem>
-                </NavigationMenuList>
-            </NavigationMenu>
+import calendar from "@/components/ui/calendar";
+import Image from "next/image";
 
-        <h1>Personalized schedule</h1>
-        </>
-    )
+export default function MySchedule() {
+  return (
+    <main>
+      <calendar />
+    </main>
+  );
 }
