@@ -1,12 +1,13 @@
 //import Calendar from "@/components/Calendar";
 
-import calendar from "@/components/ui/calendar";
-import Image from "next/image";
+import Calendar from "@/components/ui/calendar";
+import { MySchedule } from "./TabContents/MySchedule";
+{ Resources } from "./TabContents/Resources";
 
 export default function MySchedule() {
   return (
     <main>
-      <calendar />
+      <Calendar />
     </main>
   );
 }
