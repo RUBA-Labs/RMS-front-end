@@ -3,9 +3,9 @@ import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
 //tabs
 import { Overview } from "../lab-allocation-admin/TabContents/Overview";
-import { LabManagement } from "./TabContents/LabManagement";
-import { Reservation } from "./TabContents/Reservation";
-import { Scheduling } from "./TabContents/Scheduling";
+import { LabManagement } from "../lab-allocation-admin/TabContents/LabManagement";
+import { Reservation } from "../lab-allocation-admin/TabContents/Reservation";
+import { Scheduling } from "../lab-allocation-admin/TabContents/Scheduling";
 
 
 export default function LabAllocationAdmin() {
