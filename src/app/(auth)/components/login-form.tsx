@@ -35,11 +35,10 @@ export function LoginForm({
     setError(null);
     setSuccess(null);
 
-    console.log('Submitting login form with:', { email, password });
+    
 
     try {
       const response = await loginPost(email, password);
-      console.log('Login successful!', response);
       
       // Save the authentication data to localStorage using the utility function
       // Note: We map the 'access_token' from the response to 'accessToken' for our local storage schema

@@ -96,7 +96,6 @@ export function SignOut() {
         case "all":
           // API call for logging out from all devices would go here
             await logoutAllDevices();
-          console.log("Signing out from all devices.");
           router.push("/login");
           break;
         case "specific":
@@ -106,12 +105,10 @@ export function SignOut() {
           const devicesToLogout = selectedDevices.filter(id => id !== currentDeviceId);
 
           await logoutSpecificDevices(devicesToLogout);
-          console.log("Signing out from specific devices:", devicesToLogout);
           break;
         case "current":
         default:
           await logoutThisDevice();
-          console.log("Signing out from current device.");
           router.push("/login");
           break;
       }
