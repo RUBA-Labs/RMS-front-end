@@ -34,3 +34,7 @@ export const NOTIFICATION_API_URL_GET_NOTIFICATIONS = `${API_BASE_URL}notificati
 export const NOTIFICATION_API_URL_MARK_AS_READ = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/read`;
 export const NOTIFICATION_API_URL_MARK_AS_UNREAD = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/unread`;
 export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}`;
+
+
+//user profile module in the backend
+export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
