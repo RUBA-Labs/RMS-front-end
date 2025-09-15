@@ -355,7 +355,7 @@ export function Reservation() {
                     </Select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="computer_no" className="sm:text-right">Computer No.</Label>
+                    <Label htmlFor="computer_no" className="sm:text-left">Computer No.</Label>
                     <Input
                       id="computer_no"
                       type="number"
