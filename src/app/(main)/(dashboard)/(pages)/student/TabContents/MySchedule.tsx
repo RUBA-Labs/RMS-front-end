@@ -1,29 +1,30 @@
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuIndicator,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-} from "@/components/ui/navigation-menu"
+//import Calendar from "@/components/Calendar";
+
+// import Calendar from "@/components/ui/calendar";
+// import { MySchedule } from "./TabContents/MySchedule";
+// { Resources } from "./TabContents/Resources";
+
+// import Schedule from "@/app/(main)/(dashboard)/components/Schedule";
+// import Image from "next/image";
+
+// export default function MySchedule() {
+//   return (
+//     <main>
+//       <Schedule />
+//     </main>
+
+//     <hi>
+//   );
+// }
+
 
 export function MySchedule(){
     return(
         <>
-        <NavigationMenu>
-            <NavigationMenuList>
-                <NavigationMenuItem>
-                    <NavigationMenuTrigger>Item One</NavigationMenuTrigger>
-                        <NavigationMenuContent>
-                             
-                        </NavigationMenuContent>
-                    </NavigationMenuItem>
-                </NavigationMenuList>
-            </NavigationMenu>
-
-        <h1>Personalized schedule</h1>
+        <h1>Schedule</h1>
+        <p>
+            hello world
+        </p>
         </>
     )
 }
