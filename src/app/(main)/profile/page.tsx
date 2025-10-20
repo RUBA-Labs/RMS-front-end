@@ -195,7 +195,7 @@ export default function Profile() {
                       name="department"
                       value={tempProfile?.department || ''}
                       onChange={handleChange}
-                      className="w-2/3 rounded-md px-3 py-2 text-right bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
+                      className="w-2/3 rounded-md px-3 py-2 text-left bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
                     />
                   ) : (
                     <div className="font-medium text-gray-800 dark:text-white">{profile?.department}</div>
@@ -212,7 +212,7 @@ export default function Profile() {
                       name="phone"
                       value={tempProfile?.phone || ''}
                       onChange={handleChange}
-                      className="w-2/3 rounded-md px-3 py-2 text-right bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
+                      className="w-2/3 rounded-md px-3 py-2 text-left bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
                     />
                   ) : (
                     <div className="font-medium text-gray-800 dark:text-white">{profile?.phone}</div>
