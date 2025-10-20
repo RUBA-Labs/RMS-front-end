@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link"; // Import Link from Next.js
-import { useState } from "react";
+import Link from "next/link";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MainContainer } from "./components/profile-main-container";
 import { Button } from "@/components/ui/button";
 import { Pencil, Save, X, ArrowLeft } from "lucide-react";
 import { ProfileHeader } from "./components/ProfileHeader";
-import { LogOut } from "lucide-react"; // Import LogOut icon
+import { LogOut } from "lucide-react";
 
 // Animated/illustrated avatars for each role
 const profileImages = {
@@ -17,58 +17,100 @@ const profileImages = {
   "Non-academic": "https://cdn.jsdelivr.net/gh/realstoman/animated-svg-avatars@main/dist/svg/avatar-4.svg",
 };
 
+// User data type definition
+interface User {
+  fullName: string;
+  department: string;
+  email: string;
+  phone: string;
+  role: string;
+}
+
+import { getUserData } from '@/services/api/UserProfile/getUserData';
+
 export default function Profile() {
-  const role = "admin";
-  const profileImage = profileImages[role] || profileImages.Admin;
-  const Dashboard = "/" + role;
+  const [profile, setProfile] = useState<User | null>(null);
+  const [tempProfile, setTempProfile] = useState<User | null>(null);
+  const [editPersonal, setEditPersonal] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [editPersonal, setEditPersonal] = useState(false);
-  const [editAddress, setEditAddress] = useState(false);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const userData = await getUserData();
+        setProfile(userData);
+        setTempProfile(userData);
+        setError(null);
+      } catch (err) {
+        setError("Failed to fetch profile data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const [profile, setProfile] = useState({
-    fullName: "Natashia Khaleira",
-    department: "Sinhala",
-    email: "info@binary-fusion.com",
-    phone: "(+62) 821 2554-5846",
-    role: role,
-    country: "United Kingdom",
-    city: "Leeds, East London",
-    postal: "ERT 1254",
-  });
+  type SectionType = "personal";
 
-  const [tempProfile, setTempProfile] = useState(profile);
-
-  const handleEdit = (section) => {
-    setTempProfile(profile);
+  const handleEdit = (section: SectionType) => {
+    if (profile) {
+      setTempProfile(profile);
+    }
     if (section === "personal") setEditPersonal(true);
-    if (section === "address") setEditAddress(true);
   };
 
-  const handleCancel = (section) => {
-    setTempProfile(profile);
+  const handleCancel = (section: SectionType) => {
+    if (profile) {
+      setTempProfile(profile);
+    }
     if (section === "personal") setEditPersonal(false);
-    if (section === "address") setEditAddress(false);
   };
 
-  const handleSave = (section) => {
-    setProfile(tempProfile);
+  const handleSave = (section: SectionType) => {
+    if (tempProfile) {
+      setProfile(tempProfile);
+    }
     if (section === "personal") setEditPersonal(false);
-    if (section === "address") setEditAddress(false);
   };
 
-  const handleChange = (e) => {
-    setTempProfile({ ...tempProfile, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (tempProfile) {
+      setTempProfile({ ...tempProfile, [e.target.name]: e.target.value });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen text-lg">
+        Loading profile...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen text-lg text-red-500">
+        Error: {error}
+      </div>
+    );
+  }
+
+  const role = profile?.role?.toLowerCase() || "admin";
+  const profileImage = profileImages[profile?.role as keyof typeof profileImages] || profileImages.Admin;
+  const Dashboard = "/" + role;
 
   return (
     <>
-      <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen">
+      <div className="p-4 md:p-8 min-h-screen">
         <ProfileHeader />
         <MainContainer>
           <div className="flex items-center justify-between ">
-            <Link href={Dashboard}><Button variant="ghost" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Go to Dashboard
-            </Button>
+            <Link href={Dashboard}>
+              <Button variant="ghost" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" /> Go to Dashboard
+              </Button>
             </Link>
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-4" />
           </div>
@@ -98,12 +140,12 @@ export default function Profile() {
                   </Button>
                 </div>
                 <div className="flex flex-col gap-1 text-center">
-                  <span className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{profile.fullName}</span>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{profile.role}</span>
+                  <span className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">{profile?.fullName}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{profile?.role}</span>
                 </div>
               </CardContent>
               {/* Added: Change Password Button */}
-              <div className=" w-72  mx-auto">
+              <div className=" w-72 mx-auto">
                 <Link href="/change-password">
                   <Button variant="outline" className="w-full">
                     Change Password
@@ -138,12 +180,12 @@ export default function Profile() {
                   {editPersonal ? (
                     <input
                       name="fullName"
-                      value={tempProfile.fullName}
+                      value={tempProfile?.fullName || ''}
                       onChange={handleChange}
-                      className="w-2/3 rounded-md px-3 py-2 text-right bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
+                      className="w-2/3 rounded-md px-3 py-2 text-left bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
                     />
                   ) : (
-                    <div className="font-medium text-gray-800 dark:text-white">{profile.fullName}</div>
+                    <div className="font-medium text-gray-800 dark:text-white">{profile?.fullName}</div>
                   )}
                 </div>
                 <div className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 dark:border-zinc-800">
@@ -151,34 +193,34 @@ export default function Profile() {
                   {editPersonal ? (
                     <input
                       name="department"
-                      value={tempProfile.department}
+                      value={tempProfile?.department || ''}
                       onChange={handleChange}
-                      className="w-2/3 rounded-md px-3 py-2 text-right bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
+                      className="w-2/3 rounded-md px-3 py-2 text-left bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
                     />
                   ) : (
-                    <div className="font-medium text-gray-800 dark:text-white">{profile.department}</div>
+                    <div className="font-medium text-gray-800 dark:text-white">{profile?.department}</div>
                   )}
                 </div>
                 <div className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 dark:border-zinc-800">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Email Address</div>
-                  <div className="font-medium text-gray-800 dark:text-white">{profile.email}</div>
+                  <div className="font-medium text-gray-800 dark:text-white">{profile?.email}</div>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 dark:border-zinc-800">
                   <div className="text-sm text-gray-500 dark:text-gray-400">Phone Number</div>
                   {editPersonal ? (
                     <input
                       name="phone"
-                      value={tempProfile.phone}
+                      value={tempProfile?.phone || ''}
                       onChange={handleChange}
-                      className="w-2/3 rounded-md px-3 py-2 text-right bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
+                      className="w-2/3 rounded-md px-3 py-2 text-left bg-gray-100 dark:bg-zinc-800 border-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200"
                     />
                   ) : (
-                    <div className="font-medium text-gray-800 dark:text-white">{profile.phone}</div>
+                    <div className="font-medium text-gray-800 dark:text-white">{profile?.phone}</div>
                   )}
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <div className="text-sm text-gray-500 dark:text-gray-400">User Role</div>
-                  <div className="font-medium text-gray-800 dark:text-white">{profile.role}</div>
+                  <div className="font-medium text-gray-800 dark:text-white">{profile?.role}</div>
                 </div>
               </CardContent>
             </Card>
