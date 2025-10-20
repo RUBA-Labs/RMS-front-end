@@ -9,8 +9,8 @@ import {
 } from "@fullcalendar/core";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-//import timeGridPlugin from "@fullcalendar/timegrid";
-//import interactionPlugin from "@fullcalendar/interaction";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
 import {
   Dialog,
   DialogContent,
