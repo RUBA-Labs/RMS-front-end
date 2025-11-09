@@ -55,3 +55,5 @@ export const getUserData = async (): Promise<User> => {
     }
   }
 };
+
+export const displayName  = async () => (await getUserData()).fullName;

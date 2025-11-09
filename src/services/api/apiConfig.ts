@@ -38,3 +38,4 @@ export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId:
 
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
+export const USER_PROFILE_API_URL_CHANGE_PASSWORD = `${API_BASE_URL}user-profile/change-password`;
