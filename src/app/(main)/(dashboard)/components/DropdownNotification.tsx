@@ -54,31 +54,52 @@ export function DropdownNotification() {
     fetchNotifications();
   }, []);
 
-  const handleNotificationClick = async (id: string) => {
-    if (togglingId) return;
+  // --- UPDATED FUNCTION ---
+  const handleNotificationClick = (id: string) => {
+    if (togglingId) return; // Don’t open if an eye toggle is happening
 
+    const partialNotification = notifications.find(n => n.id === id);
+    if (!partialNotification) return;
+
+    // 1. Show partial data immediately
     setIsModalLoading(true);
+    setSelectedNotification({
+      id: partialNotification.id,
+      message: partialNotification.message,
+      createdAt: partialNotification.createdAt,
+      description: "",
+      isRead: true,
+    });
+    setIsDialogOpen(true);
+
+    // 2. Optimistic UI update
     setNotifications(prev =>
-      prev.map(n =>
-        n.id === id ? { ...n, isRead: true } : n
-      )
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
     );
-    try {
-      await markNotificationAsRead(id);
-      const fullDetails = await getFullNotificationById(id);
-      setSelectedNotification(fullDetails);
-      setIsDialogOpen(true);
-    } catch (error) {
-      console.error("Failed to get full notification details:", error);
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === id ? { ...n, isRead: false } : n
-        )
-      );
-    } finally {
-      setIsModalLoading(false);
-    }
+
+    // 3. Async fetch full data
+    const fetchFullData = async () => {
+      try {
+        await markNotificationAsRead(id);
+        const fullDetails = await getFullNotificationById(id);
+        setSelectedNotification(fullDetails);
+        setIsModalLoading(false);
+      } catch (error) {
+        console.error("Failed to get full notification details:", error);
+        setNotifications(prev =>
+          prev.map(n => (n.id === id ? { ...n, isRead: false } : n))
+        );
+        setSelectedNotification(prev => ({
+          ...(prev!),
+          description: "Error: Could not load notification details.",
+        }));
+        setIsModalLoading(false);
+      }
+    };
+
+    fetchFullData();
   };
+  // --- END UPDATED FUNCTION ---
 
   const handleToggleReadStatus = async (id: string, currentStatus: boolean) => {
     setTogglingId(id);
@@ -88,14 +109,11 @@ export function DropdownNotification() {
       } else {
         await markNotificationAsRead(id);
       }
-
       setNotifications(prev =>
-        prev.map(n =>
-          n.id === id ? { ...n, isRead: !n.isRead } : n
-        )
+        prev.map(n => (n.id === id ? { ...n, isRead: !n.isRead } : n))
       );
     } catch (error) {
-      console.error("Failed to toggle notification read status on the backend:", error);
+      console.error("Failed to toggle notification read status:", error);
     } finally {
       setTogglingId(null);
     }
@@ -138,25 +156,35 @@ export function DropdownNotification() {
               Failed to load notifications.
             </div>
           ) : notifications.length > 0 ? (
-            notifications.map((notification) => (
+            notifications.map(notification => (
               <div
                 key={notification.id}
-                className={`flex items-start justify-between p-2 rounded-md cursor-pointer ${!notification.isRead ? 'bg-accent dark:bg-accent/40' : 'bg-transparent'} transition-colors hover:bg-muted dark:hover:bg-muted/50`}
+                className={`flex items-start justify-between p-2 rounded-md cursor-pointer ${
+                  !notification.isRead
+                    ? "bg-accent dark:bg-accent/40"
+                    : "bg-transparent"
+                } transition-colors hover:bg-muted dark:hover:bg-muted/50`}
                 onClick={() => handleNotificationClick(notification.id)}
               >
                 <div className="flex flex-col gap-0.5">
                   <span
-                    className={`text-sm font-medium ${!notification.isRead ? 'text-blue-600 dark:text-blue-400' : 'text-foreground'}`}
+                    className={`text-sm font-medium ${
+                      !notification.isRead
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-foreground"
+                    }`}
                   >
                     {notification.message}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(notification.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}
+                    {new Date(notification.createdAt).toLocaleString("en-US", {
+                      timeZone: "Asia/Colombo",
+                    })}
                   </span>
                 </div>
 
                 <Button
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     handleToggleReadStatus(notification.id, notification.isRead);
                   }}
@@ -190,16 +218,19 @@ export function DropdownNotification() {
           </DialogHeader>
           {isModalLoading ? (
             <div className="text-center text-muted-foreground py-4">
-              Loading full notification details...
+              <CgSpinner className="h-6 w-6 animate-spin inline-block" />
+              <span className="ml-2">Loading full details...</span>
             </div>
           ) : (
             selectedNotification && (
               <div className="grid gap-4 py-4">
-                <DialogDescription>
+                <DialogDescription className="text-sm text-foreground">
                   {selectedNotification.description}
                 </DialogDescription>
                 <div className="text-xs text-right text-muted-foreground mt-4">
-                  {new Date(selectedNotification.createdAt).toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}
+                  {new Date(selectedNotification.createdAt).toLocaleString("en-US", {
+                    timeZone: "Asia/Colombo",
+                  })}
                 </div>
               </div>
             )
