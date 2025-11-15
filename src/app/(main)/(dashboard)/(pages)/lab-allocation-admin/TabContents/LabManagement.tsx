@@ -1,4 +1,3 @@
-// components/ui/lab-management.tsx
 "use client";
 
 import { useState } from "react";
@@ -34,6 +33,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+import { createLab } from "@/services/api/ComputerLabs/create_lab";
+
 // --- 1. Data and Types ---
 type ComputerStatus = "functional" | "faulty" | "in-use";
 
@@ -49,6 +50,7 @@ interface Lab {
   location: string;
   capacity: number;
   computers: Computer[];
+  computersWorking: number; // new field to track working machines
 }
 
 const initialLabs: Lab[] = [
@@ -57,6 +59,7 @@ const initialLabs: Lab[] = [
     name: "Lab A1",
     location: "Building 3, Floor 2",
     capacity: 25,
+    computersWorking: 24,
     computers: [
       { id: "c1", name: "PC-A1-01", status: "functional" },
       { id: "c2", name: "PC-A1-02", status: "faulty" },
@@ -69,6 +72,7 @@ const initialLabs: Lab[] = [
     name: "Lab B2",
     location: "Building 5, Floor 1",
     capacity: 30,
+    computersWorking: 29,
     computers: [
       { id: "c5", name: "PC-B2-01", status: "functional" },
       { id: "c6", name: "PC-B2-02", status: "functional" },
@@ -80,6 +84,7 @@ const initialLabs: Lab[] = [
     name: "Lab C3",
     location: "Building 3, Floor 3",
     capacity: 20,
+    computersWorking: 20,
     computers: [],
   },
 ];
@@ -92,28 +97,75 @@ export function LabManagement() {
   const [isLabDialogOpen, setIsLabDialogOpen] = useState(false);
   const [currentLab, setCurrentLab] = useState<Omit<Lab, 'id'> & { id?: string } | null>(null);
 
-  const [isComputerDialogOpen, setIsComputerDialogOpen] = useState(false); 
+  const [isComputerDialogOpen, setIsComputerDialogOpen] = useState(false);
   const [currentComputer, setCurrentComputer] = useState<Omit<Computer, 'id'> & { id?: string } | null>(null);
+
+  const [isSavingLab, setIsSavingLab] = useState(false);
 
   // --- Lab Management Handlers ---
   const handleOpenLabDialog = (lab?: Lab) => {
     if (lab) {
       setCurrentLab(lab);
     } else {
-      setCurrentLab({ name: "", location: "", capacity: 0, computers: [] });
+      setCurrentLab({ name: "", location: "", capacity: 0, computers: [], computersWorking: 0 });
     }
     setIsLabDialogOpen(true);
   };
 
-  const handleSaveLab = () => {
+  const handleSaveLab = async () => {
     if (!currentLab) return;
+
+    // ensure computersWorking is in valid range
+    const working = Math.max(0, Math.min(currentLab.computersWorking ?? 0, currentLab.capacity ?? 0));
+    const disabled = Math.max(0, (currentLab.capacity ?? 0) - working);
+
+    // If editing existing lab -> update locally only
     if (currentLab.id) {
-      setLabs(labs.map(l => l.id === currentLab.id ? { ...l, ...currentLab } as Lab : l));
-    } else {
-      const newLab: Lab = { ...currentLab, id: Date.now().toString(), computers: [] } as Lab;
-      setLabs([...labs, newLab]);
+      setLabs(labs.map(l => l.id === currentLab.id ? { ...l, ...currentLab, computersWorking: working } as Lab : l));
+      // update selectedLab if needed
+      if (selectedLab?.id === currentLab.id) {
+        setSelectedLab(prev => prev ? { ...prev, ...currentLab, computersWorking: working } : prev);
+      }
+      setIsLabDialogOpen(false);
+      return;
     }
-    setIsLabDialogOpen(false);
+
+    // Creating new lab -> send to backend
+    try {
+      setIsSavingLab(true);
+
+      // map UI fields to API payload
+      const payload = {
+        description: currentLab.name,
+        location: currentLab.location,
+        computersAvailable: currentLab.capacity,
+        computersWorking: working,
+        computersDisable: disabled,
+      };
+
+      const res = await createLab(payload);
+
+      // map API response to local Lab shape
+      const newLab: Lab = {
+        id: res.labId,
+        name: res.description || currentLab.name,
+        location: res.location,
+        capacity: res.computersAvailable,
+        computersWorking: res.computersWorking ?? working,
+        computers: [],
+      };
+
+      setLabs(prev => [...prev, newLab]);
+      setSelectedLab(newLab);
+      setIsLabDialogOpen(false);
+      window.alert("Lab created successfully.");
+    } catch (err: unknown) {
+      const message = (err as Error).message || "Failed to create lab.";
+      console.error("Create lab error:", message);
+      window.alert(`Error: ${message}`);
+    } finally {
+      setIsSavingLab(false);
+    }
   };
 
   const handleDeleteLab = (labId: string) => {
@@ -214,22 +266,63 @@ export function LabManagement() {
                     {currentLab?.id ? "Update lab details." : "Create a new lab."}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="lab-name" className="sm:text-right">Name</Label>
-                    <Input id="lab-name" value={currentLab?.name || ''} onChange={e => setCurrentLab(s => s ? { ...s, name: e.target.value } : null)} className="sm:col-span-3" />
+
+                {/* START: Vertical form layout */}
+                <div className="flex flex-col gap-4 py-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="lab-name">Name</Label>
+                    <Input
+                      id="lab-name"
+                      value={currentLab?.name || ''}
+                      onChange={e => setCurrentLab(s => s ? { ...s, name: e.target.value } : null)}
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="location" className="sm:text-right">Location</Label>
-                    <Input id="location" value={currentLab?.location || ''} onChange={e => setCurrentLab(s => s ? { ...s, location: e.target.value } : null)} className="sm:col-span-3" />
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="location">Location</Label>
+                    <Input
+                      id="location"
+                      value={currentLab?.location || ''}
+                      onChange={e => setCurrentLab(s => s ? { ...s, location: e.target.value } : null)}
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                    <Label htmlFor="capacity" className="sm:text-right">Capacity</Label>
-                    <Input id="capacity" type="number" value={currentLab?.capacity || 0} onChange={e => setCurrentLab(s => s ? { ...s, capacity: parseInt(e.target.value) || 0 } : null)} className="sm:col-span-3" />
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="capacity">Capacity</Label>
+                    <Input
+                      id="capacity"
+                      type="number"
+                      value={currentLab?.capacity ?? 0}
+                      onChange={e => {
+                        const cap = parseInt(e.target.value) || 0;
+                        setCurrentLab(s => s ? { ...s, capacity: cap, computersWorking: Math.min(s.computersWorking ?? 0, cap) } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="working">Working Computers</Label>
+                    <Input
+                      id="working"
+                      type="number"
+                      value={currentLab?.computersWorking ?? 0}
+                      onChange={e => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setCurrentLab(s => s ? { ...s, computersWorking: Math.min(val, s.capacity ?? val) } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div className="text-sm text-muted-foreground">
+                    Disabled computers will be calculated as <code>capacity - working</code>.
                   </div>
                 </div>
+                {/* END: Vertical form layout */}
+
                 <DialogFooter>
-                  <Button onClick={handleSaveLab}>{currentLab?.id ? "Save Changes" : "Create Lab"}</Button>
+                  <Button onClick={handleSaveLab} disabled={isSavingLab}>
+                    {isSavingLab ? "Creating..." : (currentLab?.id ? "Save Changes" : "Create Lab")}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -256,7 +349,7 @@ export function LabManagement() {
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">{lab.location}</p>
-                <p className="text-xs text-muted-foreground">Computers: {lab.computers.length} / {lab.capacity}</p>
+                <p className="text-xs text-muted-foreground">Computers working: {lab.computersWorking} • Disabled: {Math.max(0, lab.capacity - lab.computersWorking)} • Capacity: {lab.capacity}</p>
               </div>
             ))}
           </CardContent>
