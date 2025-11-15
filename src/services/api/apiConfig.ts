@@ -24,6 +24,8 @@ export const EMAIL_VALIDATION_API_URL_VERIFY_OTP = `${API_BASE_URL}email-validat
 
 //user module in the backend
 export const USER_API_URL_CREATE_USER = `${API_BASE_URL}user`;
+export const USER_API_URL_SEARCH_BY_ROLE = `${API_BASE_URL}user/search-by-role$`;
+export const USER_API_URL_GET_USER_PAGE_BY_PAGE =`${API_BASE_URL}user/paged`;
 
 //Password Reset
 export const PASSWORD_RESET_API_URL_SEND_OTP = `${API_BASE_URL}password-reset/request`;
@@ -39,3 +41,4 @@ export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId:
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
 export const USER_PROFILE_API_URL_CHANGE_PASSWORD = `${API_BASE_URL}user-profile/change-password`;
+export const USER_PROFILE_API_URL_UPDATE_PROFILE = `${API_BASE_URL}user-profile`;
