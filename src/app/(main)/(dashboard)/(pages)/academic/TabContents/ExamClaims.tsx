@@ -55,6 +55,10 @@ export function ExamClaims() {
   const [name, setName] = useState('');
   const [faculty, setFaculty] = useState('');
   const [position, setPosition] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
   const [claims, setClaims] = useState<Claim[]>(claimsData);
   const [newClaims, setNewClaims] = useState<NewClaim[]>([]);
 
@@ -87,7 +91,7 @@ export function ExamClaims() {
       alert("Please add at least one claim before submitting.");
       return;
     }
-    console.log("Exam claim submitted!", { name, faculty, position, claims: newClaims });
+    console.log("Exam claim submitted!", { name, faculty, position, bankName, branchName, accountHolderName, accountNumber, claims: newClaims });
     const claimsToSubmit: Claim[] = newClaims.map(claim => ({ ...claim, status: 'Pending' as const }));
     setClaims([...claims, ...claimsToSubmit]);
     
@@ -96,6 +100,10 @@ export function ExamClaims() {
     setName('');
     setFaculty('');
     setPosition('');
+    setBankName('');
+    setBranchName('');
+    setAccountHolderName('');
+    setAccountNumber('');
   };
 
   return (
@@ -216,6 +224,22 @@ export function ExamClaims() {
                 </SelectGroup>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="BankName" className="block mb-2">Bank Name</Label>
+            <Input id="BankName" type="text" placeholder="Enter Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="BranchName" className="block mb-2">Branch Name</Label>
+            <Input id="BranchName" type="text" placeholder="Enter Branch name" value={branchName} onChange={(e) => setBranchName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="AccountHolderName" className="block mb-2">Account Holder Name</Label>
+            <Input id="AccountHolderName" type="text" placeholder="Enter Account Holder Name" value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="AccountNumber" className="block mb-2">Account Number</Label>
+            <Input id="AccountNumber" type="text" placeholder="Enter Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
           </div>
           <Button type="submit" className="w-full mt-4 bg-blue-600 hover:bg-blue-700 rounded-md text-base font-medium transition-all duration-200 ease-in-out">
             Submit All Claims
