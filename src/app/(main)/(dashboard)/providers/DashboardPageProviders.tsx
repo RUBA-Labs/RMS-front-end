@@ -26,6 +26,9 @@ const iconMap = {
   BookOpenCheck: BookOpenCheck,
   CalendarClock: CalendarClock,
   Boxes: Boxes,
+  NewClaim: BookOpenCheck,
+  Approved: BookCheck,
+  Rejected: CalendarClock,
 };
 
 // Define the type for the props of the child components
