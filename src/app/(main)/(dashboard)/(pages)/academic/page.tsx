@@ -12,7 +12,7 @@ export default function Academic() {
     { title: "Home", url: "#", icon: "Home", content: "Home" },
     { title: "MessageBox", url: "#", icon: "Inbox", content: "MessageBox" },
     { title: "Timetable", url: "#", icon: "Calendar", content: "Timetable" },
-    { title: "Exam Claims", url: "#", icon: "Exams", content: "ExamClaims" }
+    { title: "Exam Claims", url: "#", icon: "NewClaim", content: "ExamClaims" }
   ];
 
   return (
