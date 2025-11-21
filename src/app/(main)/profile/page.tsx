@@ -72,7 +72,7 @@ export default function Profile() {
         setProfile(userData);
         setTempProfile(userData);
         setError(null);
-      } catch (_) {
+      } catch {
         setError("Failed to fetch profile data.");
       } finally {
         setLoading(false);

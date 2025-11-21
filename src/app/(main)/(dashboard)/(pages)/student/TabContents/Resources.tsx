@@ -1,4 +1,3 @@
-// components/ui/resources-management.tsx
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
@@ -8,21 +7,8 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { PlusCircle, Trash2, Edit, XCircle, Boxes, MapPin, HardHat } from "lucide-react"; // <- Added Boxes, MapPin, and HardHat
-import { Button } from "@/components/ui/button";
+import { Boxes, MapPin, HardHat } from "lucide-react"; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -124,10 +110,6 @@ export function Resources() {
 
   const selectedCategory = useMemo(() => categories.find(c => c.id === selectedCategoryId), [categories, selectedCategoryId]);
 
-  const refreshCategories = useCallback(() => {
-    resourceService.getCategories().then(setCategories);
-  }, []);
-
   const handleSelectCategory = useCallback((categoryId: string) => {
     setSelectedCategoryId(categoryId);
   }, []);
@@ -143,7 +125,6 @@ export function Resources() {
           categories={categories} 
           selectedCategoryId={selectedCategoryId} 
           onSelectCategory={handleSelectCategory}
-          refreshCategories={refreshCategories}
         />
         <ResourceManagement 
           selectedCategory={selectedCategory} 
@@ -156,11 +137,10 @@ export function Resources() {
 // --- 4. Modularized Components ---
 
 // Component to display and manage the list of resource categories
-function CategoryList({ categories, selectedCategoryId, onSelectCategory, refreshCategories }: {
+function CategoryList({ categories, selectedCategoryId, onSelectCategory }: {
   categories: ResourceCategory[],
   selectedCategoryId: string | null,
   onSelectCategory: (id: string) => void,
-  refreshCategories: () => void
 }) {
   const getCategoryIcon = (categoryId: string) => {
     if (categoryId === "cat-venues") {
@@ -213,12 +193,6 @@ function ResourceManagement({ selectedCategory }: {
       resourceService.getItemsByCategoryId(selectedCategory.id).then(setItems);
     }
   });
-
-  const refreshItems = useCallback(() => {
-    if (selectedCategory) {
-      resourceService.getItemsByCategoryId(selectedCategory.id).then(setItems);
-    }
-  }, [selectedCategory]);
 
   const itemColumns: ColumnDef<ResourceItem>[] = useMemo(() => [
     { accessorKey: "name", header: "Name" },

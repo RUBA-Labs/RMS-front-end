@@ -5,7 +5,7 @@ import { TfiReload } from "react-icons/tfi"
 
 // --- IMPORTS FOR DATA FETCHING ---
 import { retrieveUsersByPage, User } from '@/services/api/User/retrieveUsersPagination'
-import { Payment, columns } from "./columns" // Import Payment type
+import { Payment } from "./columns" // Import Payment type
 // ---
 
 import {

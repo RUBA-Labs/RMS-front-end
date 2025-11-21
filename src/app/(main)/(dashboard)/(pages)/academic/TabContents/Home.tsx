@@ -1,6 +1,7 @@
 "use client"
 import * as React from "react"
 import Autoplay from "embla-carousel-autoplay"
+import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import priview1 from "@/assets/priview-01.jpg"
 import priview2 from "@/assets/priview-02.jpg"
@@ -39,11 +40,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel"
 
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable"
+
 
 export function Home() {
   const plugin = React.useRef(
@@ -130,10 +127,11 @@ export function Home() {
               <div className="p-1">
                 <Card>
                   <CardContent className="relative aspect-[4/1] p-0 overflow-hidden">
-                    <img
-                      src={imgSrc.src}
+                    <Image
+                      src={imgSrc}
                       alt={`Preview ${index + 1}`}
-                      className="absolute inset-0 w-full h-full object-cover rounded"
+                      fill
+                      className="object-cover rounded"
                     />
                   </CardContent>
                 </Card>

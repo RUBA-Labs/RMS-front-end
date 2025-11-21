@@ -14,18 +14,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+
+// --- API Service Imports ---
+import { createExamClaim, CreateExamClaimRequest } from '@/services/api/ExamClaims/CreateExamClaim';
+import { addClaim, AddClaimRequest } from '@/services/api/ExamClaims/AddClaim';
+
+// --- Types ---
+
+type ClaimStatus = "Pending" | "Approved" | "Rejected";
 
 type Claim = {
   examName: string;
   examDate: string;
   venue: string;
   amount: number;
-  status: "Pending" | "Approved" | "Rejected";
+  status: ClaimStatus;
 };
 
 type NewClaim = Omit<Claim, 'status'>;
 
+// Mock data
 const claimsData: Claim[] = [
   {
     examName: "CS101 Midterm",
@@ -41,17 +50,13 @@ const claimsData: Claim[] = [
     amount: 7500,
     status: "Pending",
   },
-  {
-    examName: "PHY105 Quiz",
-    examDate: "2025-09-30",
-    venue: "Room 301",
-    amount: 2500,
-    status: "Rejected",
-  },
 ];
 
 export function ExamClaims() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Header Form State
   const [name, setName] = useState('');
   const [faculty, setFaculty] = useState('');
   const [position, setPosition] = useState('');
@@ -59,10 +64,12 @@ export function ExamClaims() {
   const [branchName, setBranchName] = useState('');
   const [accountHolderName, setAccountHolderName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [claims, setClaims] = useState<Claim[]>(claimsData);
-  const [newClaims, setNewClaims] = useState<NewClaim[]>([]);
 
-  // State for popover inputs
+  // Claims Lists
+  const [claims, setClaims] = useState<Claim[]>(claimsData); 
+  const [newClaims, setNewClaims] = useState<NewClaim[]>([]); 
+
+  // Popover inputs
   const [examName, setExamName] = useState('');
   const [examDate, setExamDate] = useState('');
   const [venue, setVenue] = useState('');
@@ -70,8 +77,8 @@ export function ExamClaims() {
 
   const handleAddClaimToBatch = () => {
     if (examName && examDate && venue && amount) {
+      console.log("DEBUG: Adding item to local batch:", { examName, examDate, venue, amount });
       setNewClaims([...newClaims, { examName, examDate, venue, amount: parseFloat(amount) }]);
-      // Clear fields for next entry
       setExamName('');
       setExamDate('');
       setVenue('');
@@ -85,25 +92,117 @@ export function ExamClaims() {
     setNewClaims(newClaims.filter((_, i) => i !== index));
   };
 
-  const handleClaimSubmit = (event: React.FormEvent) => {
+  // --- MAIN SUBMISSION LOGIC ---
+  const handleClaimSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // 1. Validation
     if (newClaims.length === 0) {
-      alert("Please add at least one claim before submitting.");
+      alert("Please add at least one exam claim item before submitting.");
       return;
     }
-    console.log("Exam claim submitted!", { name, faculty, position, bankName, branchName, accountHolderName, accountNumber, claims: newClaims });
-    const claimsToSubmit: Claim[] = newClaims.map(claim => ({ ...claim, status: 'Pending' as const }));
-    setClaims([...claims, ...claimsToSubmit]);
+    if (!name || !faculty || !position || !bankName || !branchName || !accountHolderName || !accountNumber) {
+      alert("Please fill in all personal and bank details.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // --- Step 1: Create the Main Claim Header ---
+      const claimHeaderData: CreateExamClaimRequest = {
+        name,
+        faculty,
+        position,
+        bankName,
+        branchName,
+        accountHolderName,
+        accountNumber
+      };
+
+      console.log("DEBUG: Step 1 - Starting CreateExamClaim request...", claimHeaderData);
+      
+      const headerResponse = await createExamClaim(claimHeaderData);
+      
+      // Validation of response
+      if (!headerResponse || !headerResponse.id) {
+        console.error("DEBUG: Step 1 Failed - No ID returned", headerResponse);
+        throw new Error("Server responded, but failed to provide a valid Claim ID.");
+      }
+
+      const newClaimId = headerResponse.id; 
+      console.log(`DEBUG: Step 1 Success - Claim Header Created. NEW ID: ${newClaimId}`);
+
+      // // --- Step 1.5: 5-Second Delay ---
+      // console.log("DEBUG: ⏳ Waiting 5 seconds for backend to register the ID...");
     
-    // Clear the form
-    setNewClaims([]);
-    setName('');
-    setFaculty('');
-    setPosition('');
-    setBankName('');
-    setBranchName('');
-    setAccountHolderName('');
-    setAccountNumber('');
+      // console.log("DEBUG: ⏳ 5-second delay complete. Proceeding to add items.");
+
+      // --- Step 2: Loop through items SEQUENTIALLY ---
+      console.log(`DEBUG: Step 2 - Starting loop to add ${newClaims.length} items...`);
+      
+      let successCount = 0;
+      
+      for (let i = 0; i < newClaims.length; i++) {
+        const item = newClaims[i];
+
+        console.log(`DEBUG: Preparing to add Item ${i + 1}/${newClaims.length}:`, item);
+        
+        const itemRequest: AddClaimRequest = {
+            examName: item.examName,
+            examDate: item.examDate, // Now this will be a valid YYYY-MM-DD string
+            venue: item.venue,
+            amount: item.amount,
+            claimId: newClaimId 
+        };
+        
+        console.log(`DEBUG: Sending Item ${i + 1}/${newClaims.length} ("${item.examName}") linked to ClaimID ${newClaimId}...`);
+        
+        try {
+            // Send request and wait for it to finish
+            const itemResponse = await addClaim(itemRequest);
+            console.log(`DEBUG: Item ${i + 1} Added Successfully. Response ID: ${itemResponse.id}`);
+            successCount++;
+        } catch (itemError: unknown) {
+            const error = itemError as { message: string; response?: { data: unknown } };
+            // Detailed Error Logging
+            console.error(`DEBUG: Failed to add Item ${i + 1}. Payload:`, itemRequest);
+            console.error(`DEBUG: Backend Error Message:`, error.message);
+            if (error.response) {
+                console.error(`DEBUG: Backend Error Data:`, error.response.data);
+            }
+            
+            throw new Error(`Failed to save exam "${item.examName}". The server rejected the data (likely invalid date or format). Check console.`);
+        }
+      }
+
+      console.log(`DEBUG: Step 2 Success - All ${successCount} items added.`);
+
+      // --- Step 3: UI Updates on Success ---
+      alert("Exam claim and all items submitted successfully!");
+
+      // Update local history table
+      const submittedClaims: Claim[] = newClaims.map(claim => ({ ...claim, status: 'Pending' as const }));
+      setClaims([...claims, ...submittedClaims]);
+
+      // Clear all forms
+      setNewClaims([]);
+      setName('');
+      setFaculty('');
+      setPosition('');
+      setBankName('');
+      setBranchName('');
+      setAccountHolderName('');
+      setAccountNumber('');
+
+    } catch (error: unknown) {
+      const err = error as { message: string };
+      console.error("DEBUG: Critical Submission Error:", error);
+      alert(`Failed to submit claims: ${err.message || "Unknown error occurred"}`);
+    } finally {
+      setIsSubmitting(false);
+      console.log("DEBUG: Submission process finished (finally block).");
+    }
   };
 
   return (
@@ -139,7 +238,14 @@ export function ExamClaims() {
                   <Label htmlFor="date" className="text-right">
                     Exam Date
                   </Label>
-                  <Input id="date" placeholder="MM/DD/YYYY" type="text" className="col-span-2 h-8" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
+                  {/* CHANGED TYPE TO 'date' TO FIX 400 ERROR */}
+                  <Input 
+                    id="date" 
+                    type="date" 
+                    className="col-span-2 h-8" 
+                    value={examDate} 
+                    onChange={(e) => setExamDate(e.target.value)} 
+                  />
                 </div>
                 <div className="grid grid-cols-3 items-center gap-4">
                   <Label htmlFor="venue" className="text-right">
@@ -204,8 +310,8 @@ export function ExamClaims() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Faculty</SelectLabel>
-                  <SelectItem value="faculty1">Faculty of Law</SelectItem>
-                  <SelectItem value="faculty2">Faculty of Arts</SelectItem>
+                  <SelectItem value="Faculty of Law">Faculty of Law</SelectItem>
+                  <SelectItem value="Faculty of Arts">Faculty of Arts</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -219,8 +325,8 @@ export function ExamClaims() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Position</SelectLabel>
-                  <SelectItem value="position1">Chief</SelectItem>
-                  <SelectItem value="position2">Assistant</SelectItem>
+                  <SelectItem value="Chief">Chief</SelectItem>
+                  <SelectItem value="Assistant">Assistant</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -241,8 +347,13 @@ export function ExamClaims() {
             <Label htmlFor="AccountNumber" className="block mb-2">Account Number</Label>
             <Input id="AccountNumber" type="text" placeholder="Enter Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
           </div>
-          <Button type="submit" className="w-full mt-4 bg-blue-600 hover:bg-blue-700 rounded-md text-base font-medium transition-all duration-200 ease-in-out">
-            Submit All Claims
+          
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className={`w-full mt-4 bg-blue-600 hover:bg-blue-700 rounded-md text-base font-medium transition-all duration-200 ease-in-out ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isSubmitting ? "Submitting..." : "Submit All Claims"}
           </Button>
         </form>
       </div>
