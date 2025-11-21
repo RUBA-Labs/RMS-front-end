@@ -40,7 +40,15 @@ export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId:
 
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
+export const USER_PROFILE_API_URL_UPDATE_PROFILE = `${API_BASE_URL}user-profile`;
 export const USER_PROFILE_API_URL_CHANGE_PASSWORD = `${API_BASE_URL}user-profile/change-password`;
 
 //computer labs module in the backend
 export const CREATE_A_NEW_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
+export const RETRIEVE_ALL_COMPUTER_LABS_API_URL = `${API_BASE_URL}computer-labs`;
+export const UPDATE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
+
+
+//computer module in the backend
+export const CREATE_A_NEW_COMPUTER_API_URL = `${API_BASE_URL}computers`;
+export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers`;

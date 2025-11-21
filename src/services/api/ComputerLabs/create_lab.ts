@@ -1,4 +1,3 @@
-// ...existing code...
 import axios from 'axios';
 
 import { CREATE_A_NEW_COMPUTER_LAB_API_URL } from '@/services/api/apiConfig';
@@ -73,4 +72,3 @@ export const createLab = async (
     throw error;
   }
 };
-// ...existing code...
