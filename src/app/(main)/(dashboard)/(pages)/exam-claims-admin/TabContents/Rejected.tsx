@@ -28,10 +28,9 @@ interface Claim {
 
 interface RejectedProps {
   claims: Claim[];
-  handleUpdateClaimStatus: (claim: Claim, newStatus: "Pending" | "Approved" | "Rejected") => void;
 }
 
-export function Rejected({ claims, handleUpdateClaimStatus }: RejectedProps) {
+export function Rejected({ claims }: RejectedProps) {
   const rejectedClaims = claims.filter(claim => claim.status === "Rejected");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);

@@ -118,9 +118,8 @@ export default function ExamClaimsAdmin() {
     <DashboardPageProviders menuItems={menuItemsExamClaimsAdmin}>
       <div title="Overview"><Overview claims={claims} /></div>
       <div title="New Claim"><NewClaim claims={claims} handleUpdateClaimStatus={handleUpdateClaimStatus} /></div>
-      <div title="Approved"><Approved claims={claims} handleUpdateClaimStatus={handleUpdateClaimStatus} /></div>
-      <div title="Rejected"><Rejected claims={claims} handleUpdateClaimStatus={handleUpdateClaimStatus} /></div>
+      <div title="Approved"><Approved claims={claims} /></div>
+      <div title="Rejected"><Rejected claims={claims} /></div>
     </DashboardPageProviders>
   );
 }
-1

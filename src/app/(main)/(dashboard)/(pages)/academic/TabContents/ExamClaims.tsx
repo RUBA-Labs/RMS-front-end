@@ -163,12 +163,13 @@ export function ExamClaims() {
             const itemResponse = await addClaim(itemRequest);
             console.log(`DEBUG: Item ${i + 1} Added Successfully. Response ID: ${itemResponse.id}`);
             successCount++;
-        } catch (itemError: any) {
+        } catch (itemError: unknown) {
+            const error = itemError as { message: string; response?: { data: unknown } };
             // Detailed Error Logging
             console.error(`DEBUG: Failed to add Item ${i + 1}. Payload:`, itemRequest);
-            console.error(`DEBUG: Backend Error Message:`, itemError.message);
-            if (itemError.response) {
-                console.error(`DEBUG: Backend Error Data:`, itemError.response.data);
+            console.error(`DEBUG: Backend Error Message:`, error.message);
+            if (error.response) {
+                console.error(`DEBUG: Backend Error Data:`, error.response.data);
             }
             
             throw new Error(`Failed to save exam "${item.examName}". The server rejected the data (likely invalid date or format). Check console.`);
@@ -194,9 +195,10 @@ export function ExamClaims() {
       setAccountHolderName('');
       setAccountNumber('');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { message: string };
       console.error("DEBUG: Critical Submission Error:", error);
-      alert(`Failed to submit claims: ${error.message || "Unknown error occurred"}`);
+      alert(`Failed to submit claims: ${err.message || "Unknown error occurred"}`);
     } finally {
       setIsSubmitting(false);
       console.log("DEBUG: Submission process finished (finally block).");

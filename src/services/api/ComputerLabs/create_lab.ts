@@ -57,7 +57,7 @@ export const createLab = async (
 
     // Extract message if available
     const serverMessage =
-      (response.data as any)?.message ||
+      (response.data as { message?: string })?.message ||
       response.statusText ||
       'Failed to create computer lab.';
 
@@ -65,7 +65,7 @@ export const createLab = async (
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const message =
-        (error.response?.data as any)?.message ||
+        (error.response?.data as { message?: string })?.message ||
         error.message ||
         'Failed to create computer lab.';
       throw new Error(message);

@@ -67,7 +67,7 @@ export const addClaim = async (
     // Robust error handling pattern for API calls
     if (axios.isAxiosError(error)) {
       
-      const apiErrorData = error.response?.data as any;
+      const apiErrorData = error.response?.data as { message?: string | { message?: string } };
       let specificErrorMessage: string | undefined;
 
       // Check for 401 status and handle session expiration (similar to CreateExamClaim.ts)

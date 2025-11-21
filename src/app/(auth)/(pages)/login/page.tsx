@@ -46,7 +46,7 @@ export default function LoginPage() {
           removeAuthData();
           setIsLoading(false);
         }
-      } catch (error) {
+      } catch {
         // 5. If API fails, token is bad. Clear it and show login page.
         removeAuthData();
         setIsLoading(false);
