@@ -35,6 +35,7 @@ export interface ConflictRequestItem {
   original_date: string;
   original_time: string;
   reason_description: string;
+  is_viewed: boolean; // Added to match backend response
   request_create_user_id: number;
   requestByUser: RequestByUser;
   availableSlots: ConflictAvailableSlot[];
@@ -71,7 +72,6 @@ export const getAllConflictRequests = async (): Promise<ConflictRequestItem[]> =
     );
 
     // 3. Data Transformation / Validation (Optional)
-    // We assume the backend returns the structure matching our interface directly.
     const requests: ConflictRequestItem[] = response.data;
     
     console.log(`Successfully fetched ${requests.length} conflict requests.`);
