@@ -3,7 +3,7 @@ import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 //tabs
 import { Home } from "./TabContents/Home";
 import { MessageBox } from "./TabContents/MessageBox";
-import { Timetable } from "./TabContents/Timetable";
+import  Timetable  from "./TabContents/AcademicTimetable";
 import { ExamClaims } from "./TabContents/ExamClaims";
 
 
