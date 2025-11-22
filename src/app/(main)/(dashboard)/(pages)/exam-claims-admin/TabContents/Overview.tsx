@@ -1,58 +1,65 @@
 "use client"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+// Adjust this import path to match where you saved the file from the previous step
+import { getAllExamClaimItems, ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems"
 
-interface Claim {
-  examName: string;
-  examDate: string;
-  venue: string;
-  amount: number;
-  status: "Pending" | "Approved" | "Rejected";
-  fullName: string;
-  faculty: string;
-  position: string;
-  bankName: string;
-  branchName: string;
-  accountHolderName: string;
-  accountNumber: string;
-}
+export function Overview() {
+  const [claims, setClaims] = useState<ExamClaimItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-interface OverviewProps {
-  claims: Claim[];
-}
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await getAllExamClaimItems();
+        setClaims(data);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load exam claims.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-export function Overview({ claims }: OverviewProps) {
-  const newClaimsCount = claims.filter(claim => claim.status === "Pending").length;
-  const approvedClaimsCount = claims.filter(claim => claim.status === "Approved").length;
-  const rejectedClaimsCount = claims.filter(claim => claim.status === "Rejected").length;
+  if (loading) return <div className="p-4">Loading claims data...</div>;
+  if (error) return <div className="p-4 text-red-500">{error}</div>;
+
+  // Calculate counts based on the nested status object from API (e.g., "PENDING", "APPROVED")
+  const newClaimsCount = claims.filter(claim => claim.status.status === "PENDING").length;
+  const approvedClaimsCount = claims.filter(claim => claim.status.status === "APPROVED").length;
+  const rejectedClaimsCount = claims.filter(claim => claim.status.status === "REJECTED").length;
 
   return (
     <>
       <div className="flex justify-around gap-4 p-4">
-          <Card className="w-1/3">
-              <CardHeader>
-                  <CardTitle>New Claims</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <p className="text-4xl font-bold">{newClaimsCount}</p>
-              </CardContent>
-          </Card>
-          <Card className="w-1/3">
-              <CardHeader>
-                  <CardTitle>Approved Claims</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <p className="text-4xl font-bold">{approvedClaimsCount}</p>
-              </CardContent>
-          </Card>
-          <Card className="w-1/3">
-              <CardHeader>
-                  <CardTitle>Rejected Claims</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <p className="text-4xl font-bold">{rejectedClaimsCount}</p>
-              </CardContent>
-          </Card>
+        <Card className="w-1/3">
+          <CardHeader>
+            <CardTitle>New Claims</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{newClaimsCount}</p>
+          </CardContent>
+        </Card>
+        <Card className="w-1/3">
+          <CardHeader>
+            <CardTitle>Approved Claims</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{approvedClaimsCount}</p>
+          </CardContent>
+        </Card>
+        <Card className="w-1/3">
+          <CardHeader>
+            <CardTitle>Rejected Claims</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-4xl font-bold">{rejectedClaimsCount}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="mt-8">
@@ -69,21 +76,22 @@ export function Overview({ claims }: OverviewProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {claims.map((claim, index) => (
-                <TableRow key={index}>
+              {claims.map((claim) => (
+                <TableRow key={claim.id}>
                   <TableCell>{claim.examName}</TableCell>
                   <TableCell>{claim.examDate}</TableCell>
                   <TableCell>{claim.venue}</TableCell>
-                  <TableCell>Rs. {claim.amount.toFixed(2)}</TableCell>
+                  <TableCell>Rs. {parseFloat(claim.amount).toFixed(2)}</TableCell>
                   <TableCell>
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${claim.status === 'Approved' ? 'bg-green-100 text-green-800' : ''}
-                        ${claim.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${claim.status === 'Rejected' ? 'bg-red-100 text-red-800' : ''}
+                        ${claim.status.status === 'APPROVED' ? 'bg-green-100 text-green-800' : ''}
+                        ${claim.status.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : ''}
+                        ${claim.status.status === 'REJECTED' ? 'bg-red-100 text-red-800' : ''}
                       `}
                     >
-                      {claim.status}
+                      {/* Displaying status in Title Case for better UI looks */}
+                      {claim.status.status.charAt(0) + claim.status.status.slice(1).toLowerCase()}
                     </span>
                   </TableCell>
                 </TableRow>
