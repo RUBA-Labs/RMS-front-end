@@ -65,3 +65,6 @@ export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers
 export const CREATE_ANNOUNCEMENT_API_URL = `${API_BASE_URL}announcements`;
 export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/my-announcements`;
 
+//time table management  module in the backend
+export const TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME = `${API_BASE_URL}timetable-management/schedule/by-day-time`;
+
