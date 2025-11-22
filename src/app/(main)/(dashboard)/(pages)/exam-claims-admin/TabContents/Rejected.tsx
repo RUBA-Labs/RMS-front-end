@@ -10,32 +10,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
-interface Claim {
-  examName: string;
-  examDate: string;
-  venue: string;
-  amount: number;
-  status: "Pending" | "Approved" | "Rejected";
-  fullName: string;
-  faculty: string;
-  position: string;
-  bankName: string;
-  branchName: string;
-  accountHolderName: string;
-  accountNumber: string;
-}
+import { ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems";
 
 interface RejectedProps {
-  claims: Claim[];
+  claims: ExamClaimItem[];
 }
 
 export function Rejected({ claims }: RejectedProps) {
-  const rejectedClaims = claims.filter(claim => claim.status === "Rejected");
+  const rejectedClaims = claims.filter(claim => claim.status.status === "REJECTED");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<ExamClaimItem | null>(null);
 
-  const handleViewClaim = (claim: Claim) => {
+  const handleViewClaim = (claim: ExamClaimItem) => {
     setSelectedClaim(claim);
     setIsDialogOpen(true);
   };
@@ -58,9 +44,9 @@ export function Rejected({ claims }: RejectedProps) {
             {rejectedClaims.map((claim, index) => (
               <TableRow key={index}>
                 <TableCell>{claim.examName}</TableCell>
-                <TableCell>{claim.fullName}</TableCell>
+                <TableCell>{claim.examClaim.name}</TableCell>
                 <TableCell>{claim.examDate}</TableCell>
-                <TableCell>Rs. {claim.amount.toFixed(2)}</TableCell>
+                <TableCell>Rs. {parseFloat(claim.amount).toFixed(2)}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleViewClaim(claim)}>
@@ -92,7 +78,7 @@ export function Rejected({ claims }: RejectedProps) {
                   <CardTitle className="text-lg sm:h-[1px]">Claim Details</CardTitle>
                 </CardHeader>
                 <CardContent className="grid">
-                  <p><strong>Amount:</strong> Rs. {selectedClaim.amount.toFixed(2)}</p>
+                  <p><strong>Amount:</strong> Rs. {parseFloat(selectedClaim.amount).toFixed(2)}</p>
                 </CardContent>
               </Card>
 
@@ -101,9 +87,9 @@ export function Rejected({ claims }: RejectedProps) {
                   <CardTitle className="text-lg sm:h-[1px]">Claimant Information</CardTitle>
                 </CardHeader>
                 <CardContent className="grid">
-                  <p><strong>Full Name:</strong> {selectedClaim.fullName}</p>
-                  <p><strong>Faculty:</strong> {selectedClaim.faculty}</p>
-                  <p><strong>Position:</strong> {selectedClaim.position}</p>
+                  <p><strong>Full Name:</strong> {selectedClaim.examClaim.name}</p>
+                  <p><strong>Faculty:</strong> {selectedClaim.examClaim.faculty}</p>
+                  <p><strong>Position:</strong> {selectedClaim.examClaim.position}</p>
                 </CardContent>
               </Card>
 
@@ -112,10 +98,10 @@ export function Rejected({ claims }: RejectedProps) {
                   <CardTitle className="text-lg sm:h-[1px]">Bank Details</CardTitle>
                 </CardHeader>
                 <CardContent className="grid">
-                  <p><strong>Bank Name:</strong> {selectedClaim.bankName}</p>
-                  <p><strong>Branch Name:</strong> {selectedClaim.branchName}</p>
-                  <p><strong>Account Holder Name:</strong> {selectedClaim.accountHolderName}</p>
-                  <p><strong>Account Number:</strong> {selectedClaim.accountNumber}</p>
+                  <p><strong>Bank Name:</strong> {selectedClaim.examClaim.bankName}</p>
+                  <p><strong>Branch Name:</strong> {selectedClaim.examClaim.branchName}</p>
+                  <p><strong>Account Holder Name:</strong> {selectedClaim.examClaim.accountHolderName}</p>
+                  <p><strong>Account Number:</strong> {selectedClaim.examClaim.accountNumber}</p>
                 </CardContent>
               </Card>
             </div>

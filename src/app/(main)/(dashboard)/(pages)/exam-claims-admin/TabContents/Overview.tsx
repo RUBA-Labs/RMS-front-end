@@ -1,33 +1,13 @@
 "use client"
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-// Adjust this import path to match where you saved the file from the previous step
-import { getAllExamClaimItems, ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems"
+import { ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems"
 
-export function Overview() {
-  const [claims, setClaims] = useState<ExamClaimItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface OverviewProps {
+  claims: ExamClaimItem[];
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getAllExamClaimItems();
-        setClaims(data);
-      } catch (err) {
-        console.error(err);
-        setError("Failed to load exam claims.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  if (loading) return <div className="p-4">Loading claims data...</div>;
-  if (error) return <div className="p-4 text-red-500">{error}</div>;
-
+export function Overview({ claims }: OverviewProps) {
   // Calculate counts based on the nested status object from API (e.g., "PENDING", "APPROVED")
   const newClaimsCount = claims.filter(claim => claim.status.status === "PENDING").length;
   const approvedClaimsCount = claims.filter(claim => claim.status.status === "APPROVED").length;
