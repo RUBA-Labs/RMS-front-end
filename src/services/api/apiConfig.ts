@@ -52,6 +52,9 @@ export const UPDATE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
 export const EXAM_CLAIMS_API_URL_CREATE_EXAM_CLAIM = `${API_BASE_URL}exam-claims`;
 export const ADD_CLAIMS = `${API_BASE_URL}exam-claims/add-item`;
 export const RETRIEVE_ALL_MY_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/my-items`;
+export const RETRIEVE_ALL_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/items`;
+export const UPDATE_STATUS_CLAIM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}/status`;
+export const DELETE_EXAM_CLAIM_ITEM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}`;
 
 
 //computer module in the backend
