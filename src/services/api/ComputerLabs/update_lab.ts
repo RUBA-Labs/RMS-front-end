@@ -10,10 +10,25 @@ export interface UpdateLabPayload {
   computersDisable?: number;
 }
 
+export interface UpdateLabResponse {
+  labId?: string;
+  id?: string;
+  description?: string;
+  location?: string;
+  computersAvailable?: number;
+  computersWorking?: number;
+  computers?: unknown[];
+}
+
+// Type for expected error response from the API
+interface ApiError {
+  message?: string;
+}
+
 export const updateLab = async (
   labId: string,
   payload: UpdateLabPayload
-): Promise<any> => {
+): Promise<UpdateLabResponse> => {
   if (!labId || labId.trim() === '') {
     throw new Error('labId is required to update a lab.');
   }
@@ -27,7 +42,7 @@ export const updateLab = async (
   const url = `${UPDATE_A_COMPUTER_LAB_API_URL}/${labId}`;
 
   try {
-    const response = await axios.patch(url, payload, {
+    const response = await axios.patch<UpdateLabResponse>(url, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -40,7 +55,7 @@ export const updateLab = async (
     }
 
     if (response.status === 400) {
-      const msg = (response.data as any)?.message || 'Bad request. Invalid data.';
+      const msg = (response.data as ApiError)?.message || 'Bad request. Invalid data.';
       throw new Error(msg);
     }
 
@@ -61,12 +76,12 @@ export const updateLab = async (
       throw new Error('Server error. Please try again later.');
     }
 
-    const serverMsg = (response.data as any)?.message || response.statusText || `Update failed (status ${response.status}).`;
+    const serverMsg = (response.data as ApiError)?.message || response.statusText || `Update failed (status ${response.status}).`;
     throw new Error(serverMsg);
   } catch (err: unknown) {
     if (axios.isAxiosError(err)) {
       const message =
-        (err.response?.data as any)?.message ||
+        (err.response?.data as ApiError)?.message ||
         err.message ||
         'Network error while updating lab.';
       throw new Error(message);

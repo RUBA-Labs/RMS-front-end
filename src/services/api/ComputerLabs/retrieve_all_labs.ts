@@ -30,6 +30,11 @@ export interface LabDto {
   createdAt?: string;
 }
 
+// Type for expected error response from the API
+interface ApiError {
+  message?: string;
+}
+
 /**
  * Retrieve all labs from backend, attach JWT and map to frontend shape.
  */
@@ -43,21 +48,24 @@ export const retrieveAllLabs = async (): Promise<LabDto[]> => {
       throw new Error("No access token found. Please log in.");
     }
 
-    const response = await axios.get(RETRIEVE_ALL_COMPUTER_LABS_API_URL, {
+    const response = await axios.get<unknown>(RETRIEVE_ALL_COMPUTER_LABS_API_URL, {
       headers: { Authorization: `Bearer ${token}` },
       validateStatus: () => true,
     });
 
     if (response.status === 200) {
-      // backend may return array directly or wrap it in a data property
-      const raw: unknown = response.data;
-      const items: ApiLab[] = Array.isArray(raw)
-        ? raw
-        : Array.isArray((raw as any)?.data)
-        ? (raw as any).data
-        : (raw as any)?.labs && Array.isArray((raw as any).labs)
-        ? (raw as any).labs
-        : [];
+      const raw = response.data;
+      let items: ApiLab[] = [];
+
+      if (Array.isArray(raw)) {
+        items = raw;
+      } else if (typeof raw === "object" && raw !== null) {
+        if ("data" in raw && Array.isArray((raw as { data: unknown }).data)) {
+          items = (raw as { data: ApiLab[] }).data;
+        } else if ("labs" in raw && Array.isArray((raw as { labs: unknown }).labs)) {
+          items = (raw as { labs: ApiLab[] }).labs;
+        }
+      }
 
       const mapped = items.map<LabDto>((lab) => ({
         id: lab.labId,
@@ -80,11 +88,11 @@ export const retrieveAllLabs = async (): Promise<LabDto[]> => {
     }
 
     const serverMessage =
-      (response.data as any)?.message || response.statusText || "Failed to retrieve labs.";
+      (response.data as ApiError)?.message || response.statusText || "Failed to retrieve labs.";
     throw new Error(serverMessage);
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
-      const message = (error.response?.data as any)?.message || error.message || "Failed to retrieve labs.";
+      const message = (error.response?.data as ApiError)?.message || error.message || "Failed to retrieve labs.";
       if (error.response?.status === 401) removeAuthData();
       throw new Error(message);
     }

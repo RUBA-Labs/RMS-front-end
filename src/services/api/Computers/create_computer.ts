@@ -20,6 +20,11 @@ export interface CreateComputerResponse {
   createdAt?: string;
 }
 
+// Type for expected error response from the API
+interface ApiError {
+  message?: string;
+}
+
 /**
  * Create a new computer and attach it to a lab (labId required).
  * Ensures JWT is attached and returns created computer including labId so
@@ -62,8 +67,6 @@ export const createComputer = async (
       }
     );
 
-    console.log(JSON.stringify(response))
-
     // Success response - status 201 (Created)
     if (response.status === 201) {
       const data = response.data;
@@ -81,7 +84,7 @@ export const createComputer = async (
 
     // Handle error responses
     if (response.status === 400) {
-      const errorMessage = (response.data as any)?.message || "Bad request";
+      const errorMessage = (response.data as ApiError)?.message || "Bad request";
       throw new Error(errorMessage);
     }
 
@@ -90,12 +93,12 @@ export const createComputer = async (
     }
 
     if (response.status === 404) {
-      const errorMessage = (response.data as any)?.message || "Lab not found";
+      const errorMessage = (response.data as ApiError)?.message || "Lab not found";
       throw new Error(errorMessage);
     }
 
     const serverMessage =
-      (response.data as any)?.message ||
+      (response.data as ApiError)?.message ||
       response.statusText ||
       "Failed to create computer.";
 
@@ -103,7 +106,7 @@ export const createComputer = async (
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const message =
-        (error.response?.data as any)?.message ||
+        (error.response?.data as ApiError)?.message ||
         error.message ||
         "Failed to create computer.";
       throw new Error(message);
