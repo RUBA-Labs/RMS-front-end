@@ -9,15 +9,25 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+
+// Import the Fetch Service and Type
 import { getAllExamClaimItems, ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems";
+// Import the Update Service and Type
+import { updateStatusClaim, ClaimStatusType } from "@/services/api/ExamClaims/UpdateStatusClaim";
 
 export function NewClaim() {
+  // State for storing all claims fetched from the API
   const [claims, setClaims] = useState<ExamClaimItem[]>([]);
+  // State for initial page loading
   const [loading, setLoading] = useState(true);
+  // State for controlling the details modal
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<ExamClaimItem | null>(null);
+  
+  // State to manage the loading/disabled state of the Approve/Reject buttons during API calls
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // Fetch data from API on mount
+  // 1. Fetch data from API on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -32,23 +42,37 @@ export function NewClaim() {
     fetchData();
   }, []);
 
-  // Filter only PENDING claims
+  // 2. Filter only 'PENDING' claims for the "New Claims" view
+  // We filter the main list so that when we update a status, it automatically disappears from this view
   const pendingClaims = claims.filter(claim => claim.status.status === "PENDING");
 
+  // Opens the modal with the selected claim details
   const handleViewClaim = (claim: ExamClaimItem) => {
     setSelectedClaim(claim);
     setIsDialogOpen(true);
   };
 
-  // Placeholder for update logic (You will need an API endpoint to actually update this)
-  const handleUpdateStatus = async (status: "APPROVED" | "REJECTED") => {
+  // 3. Handle Status Update (Approve/Reject)
+  const handleUpdateStatus = async (status: ClaimStatusType) => {
     if (!selectedClaim) return;
 
+    // Confirmation Popup
+    const isConfirmed = window.confirm(
+      `Are you sure you want to mark this claim as ${status}?`
+    );
+
+    if (!isConfirmed) return;
+
+    setIsUpdating(true);
+
     try {
-      // TODO: Call your update API here
-      console.log(`Updating claim ${selectedClaim.id} to ${status}`);
-      
-      // Optimistic update: Remove the item from the list locally to reflect change immediately
+      // Call the API service to update status in the backend
+      await updateStatusClaim(selectedClaim.id, status);
+
+      // Update Local State on Success:
+      // We update the specific claim in the main `claims` array. 
+      // Because `pendingClaims` is derived by filtering for "PENDING", 
+      // changing the status to APPROVED/REJECTED here removes it from the table automatically.
       setClaims(prev => prev.map(c => 
         c.id === selectedClaim.id 
           ? { ...c, status: { ...c.status, status: status } } 
@@ -56,8 +80,15 @@ export function NewClaim() {
       ));
 
       setIsDialogOpen(false);
+      
+      // Optional: Success Alert or Toast
+      // alert(`Claim successfully marked as ${status}`);
+
     } catch (error) {
       console.error("Failed to update status", error);
+      alert("Failed to update claim status. Please try again.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -103,6 +134,7 @@ export function NewClaim() {
         </Table>
       </div>
 
+      {/* Details Dialog */}
       {selectedClaim && (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
@@ -113,35 +145,43 @@ export function NewClaim() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-2">
-              {/* Accessing nested details correctly */}
-              <p><strong>Full Name:</strong> {selectedClaim.examClaim.name}</p>
-              <p><strong>Faculty:</strong> {selectedClaim.examClaim.faculty}</p>
-              <p><strong>Position:</strong> {selectedClaim.examClaim.position}</p>
-              <p><strong>Amount:</strong> Rs. {parseFloat(selectedClaim.amount).toFixed(2)}</p>
-              <hr className="my-2"/>
-              <p><strong>Bank Name:</strong> {selectedClaim.examClaim.bankName}</p>
-              <p><strong>Branch Name:</strong> {selectedClaim.examClaim.branchName}</p>
-              <p><strong>Account Holder:</strong> {selectedClaim.examClaim.accountHolderName}</p>
-              <p><strong>Account Number:</strong> {selectedClaim.examClaim.accountNumber}</p>
+            <div className="space-y-2 text-sm">
+              {/* Displaying Nested Data */}
+              <div className="grid grid-cols-2 gap-1">
+                <p className="font-semibold">Full Name:</p> <p>{selectedClaim.examClaim.name}</p>
+                <p className="font-semibold">Faculty:</p> <p>{selectedClaim.examClaim.faculty}</p>
+                <p className="font-semibold">Position:</p> <p>{selectedClaim.examClaim.position}</p>
+                <p className="font-semibold">Amount:</p> <p>Rs. {parseFloat(selectedClaim.amount).toFixed(2)}</p>
+              </div>
+              
+              <hr className="my-4"/>
+              
+              <div className="grid grid-cols-2 gap-1">
+                <p className="font-semibold">Bank Name:</p> <p>{selectedClaim.examClaim.bankName}</p>
+                <p className="font-semibold">Branch Name:</p> <p>{selectedClaim.examClaim.branchName}</p>
+                <p className="font-semibold">Account Holder:</p> <p>{selectedClaim.examClaim.accountHolderName}</p>
+                <p className="font-semibold">Account Number:</p> <p>{selectedClaim.examClaim.accountNumber}</p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-4">
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-green-500 hover:bg-green-600 text-white border-0" 
+                className="bg-green-600 hover:bg-green-700 text-white border-0" 
                 onClick={() => handleUpdateStatus("APPROVED")}
+                disabled={isUpdating}
               >
-                Approve
+                {isUpdating ? 'Processing...' : 'Approve'}
               </Button>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-red-500 hover:bg-red-600 text-white border-0" 
+                className="bg-red-600 hover:bg-red-700 text-white border-0" 
                 onClick={() => handleUpdateStatus("REJECTED")}
+                disabled={isUpdating}
               >
-                Reject
+                 {isUpdating ? 'Processing...' : 'Reject'}
               </Button>
             </div>
           </DialogContent>
