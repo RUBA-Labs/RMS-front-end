@@ -24,6 +24,8 @@ export const EMAIL_VALIDATION_API_URL_VERIFY_OTP = `${API_BASE_URL}email-validat
 
 //user module in the backend
 export const USER_API_URL_CREATE_USER = `${API_BASE_URL}user`;
+export const USER_API_URL_SEARCH_BY_ROLE = `${API_BASE_URL}user/search-by-role$`;
+export const USER_API_URL_GET_USER_PAGE_BY_PAGE =`${API_BASE_URL}user/paged`;
 
 //Password Reset
 export const PASSWORD_RESET_API_URL_SEND_OTP = `${API_BASE_URL}password-reset/request`;
@@ -39,3 +41,20 @@ export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId:
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
 export const USER_PROFILE_API_URL_CHANGE_PASSWORD = `${API_BASE_URL}user-profile/change-password`;
+
+//computer labs module in the backend
+export const CREATE_A_NEW_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
+export const RETRIEVE_ALL_COMPUTER_LABS_API_URL = `${API_BASE_URL}computer-labs`;
+export const UPDATE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
+
+//exam claims module in the backend
+export const EXAM_CLAIMS_API_URL_CREATE_EXAM_CLAIM = `${API_BASE_URL}exam-claims`;
+export const ADD_CLAIMS = `${API_BASE_URL}exam-claims/add-item`;
+export const RETRIEVE_ALL_MY_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/my-items`;
+
+
+
+
+//computer module in the backend
+export const CREATE_A_NEW_COMPUTER_API_URL = `${API_BASE_URL}computers`;
+export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers`;

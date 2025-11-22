@@ -42,7 +42,7 @@ export default function SignupPage() {
           removeAuthData();
           setIsLoading(false);
         }
-      } catch (error) {
+      } catch {
         // 5. If API fails, token is bad. Clear it and show sign-up page.
         removeAuthData();
         setIsLoading(false);

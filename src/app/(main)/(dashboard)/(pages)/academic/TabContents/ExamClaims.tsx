@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -14,60 +14,72 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
-type Claim = {
+// --- API Service Imports ---
+import { createExamClaim, CreateExamClaimRequest } from '@/services/api/ExamClaims/CreateExamClaim';
+import { addClaim, AddClaimRequest } from '@/services/api/ExamClaims/AddClaim';
+// Import the Get Service and the Interface
+import { getCurrentUserClaims, ExamClaimItem } from '@/services/api/ExamClaims/GetCurrentUserClaim';
+
+// --- Types ---
+
+// Type for the items being currently added/drafted in the UI
+type NewClaim = {
   examName: string;
   examDate: string;
   venue: string;
   amount: number;
-  status: "Pending" | "Approved" | "Rejected";
 };
-
-type NewClaim = Omit<Claim, 'status'>;
-
-const claimsData: Claim[] = [
-  {
-    examName: "CS101 Midterm",
-    examDate: "2025-10-15",
-    venue: "Hall A",
-    amount: 5000,
-    status: "Approved",
-  },
-  {
-    examName: "MA203 Final",
-    examDate: "2025-11-20",
-    venue: "Hall B",
-    amount: 7500,
-    status: "Pending",
-  },
-  {
-    examName: "PHY105 Quiz",
-    examDate: "2025-09-30",
-    venue: "Room 301",
-    amount: 2500,
-    status: "Rejected",
-  },
-];
 
 export function ExamClaims() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Header Form State
   const [name, setName] = useState('');
   const [faculty, setFaculty] = useState('');
   const [position, setPosition] = useState('');
-  const [claims, setClaims] = useState<Claim[]>(claimsData);
-  const [newClaims, setNewClaims] = useState<NewClaim[]>([]);
+  const [bankName, setBankName] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
 
-  // State for popover inputs
+  // Claims Lists
+  // Updated to use the API interface
+  const [claims, setClaims] = useState<ExamClaimItem[]>([]); 
+  const [isLoadingClaims, setIsLoadingClaims] = useState(true);
+  
+  const [newClaims, setNewClaims] = useState<NewClaim[]>([]); 
+
+  // Popover inputs
   const [examName, setExamName] = useState('');
   const [examDate, setExamDate] = useState('');
   const [venue, setVenue] = useState('');
   const [amount, setAmount] = useState('');
 
+  // --- Fetch Data Logic ---
+  const fetchClaimsHistory = async () => {
+    try {
+      setIsLoadingClaims(true);
+      const data = await getCurrentUserClaims();
+      setClaims(data);
+    } catch (error) {
+      console.error("Failed to fetch claims history:", error);
+    } finally {
+      setIsLoadingClaims(false);
+    }
+  };
+
+  // Load claims on component mount
+  useEffect(() => {
+    fetchClaimsHistory();
+  }, []);
+
   const handleAddClaimToBatch = () => {
     if (examName && examDate && venue && amount) {
+      console.log("DEBUG: Adding item to local batch:", { examName, examDate, venue, amount });
       setNewClaims([...newClaims, { examName, examDate, venue, amount: parseFloat(amount) }]);
-      // Clear fields for next entry
       setExamName('');
       setExamDate('');
       setVenue('');
@@ -81,21 +93,108 @@ export function ExamClaims() {
     setNewClaims(newClaims.filter((_, i) => i !== index));
   };
 
-  const handleClaimSubmit = (event: React.FormEvent) => {
+  // --- MAIN SUBMISSION LOGIC ---
+  const handleClaimSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // 1. Validation
     if (newClaims.length === 0) {
-      alert("Please add at least one claim before submitting.");
+      alert("Please add at least one exam claim item before submitting.");
       return;
     }
-    console.log("Exam claim submitted!", { name, faculty, position, claims: newClaims });
-    const claimsToSubmit: Claim[] = newClaims.map(claim => ({ ...claim, status: 'Pending' as const }));
-    setClaims([...claims, ...claimsToSubmit]);
-    
-    // Clear the form
-    setNewClaims([]);
-    setName('');
-    setFaculty('');
-    setPosition('');
+    if (!name || !faculty || !position || !bankName || !branchName || !accountHolderName || !accountNumber) {
+      alert("Please fill in all personal and bank details.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // --- Step 1: Create the Main Claim Header ---
+      const claimHeaderData: CreateExamClaimRequest = {
+        name,
+        faculty,
+        position,
+        bankName,
+        branchName,
+        accountHolderName,
+        accountNumber
+      };
+
+      console.log("DEBUG: Step 1 - Starting CreateExamClaim request...", claimHeaderData);
+      
+      const headerResponse = await createExamClaim(claimHeaderData);
+      
+      // Validation of response
+      if (!headerResponse || !headerResponse.id) {
+        console.error("DEBUG: Step 1 Failed - No ID returned", headerResponse);
+        throw new Error("Server responded, but failed to provide a valid Claim ID.");
+      }
+
+      const newClaimId = headerResponse.id; 
+      console.log(`DEBUG: Step 1 Success - Claim Header Created. NEW ID: ${newClaimId}`);
+
+      // --- Step 2: Loop through items SEQUENTIALLY ---
+      console.log(`DEBUG: Step 2 - Starting loop to add ${newClaims.length} items...`);
+      
+      let successCount = 0;
+      
+      for (let i = 0; i < newClaims.length; i++) {
+        const item = newClaims[i];
+
+        console.log(`DEBUG: Preparing to add Item ${i + 1}/${newClaims.length}:`, item);
+        
+        const itemRequest: AddClaimRequest = {
+            examName: item.examName,
+            examDate: item.examDate, 
+            venue: item.venue,
+            amount: item.amount,
+            claimId: newClaimId 
+        };
+        
+        console.log(`DEBUG: Sending Item ${i + 1}/${newClaims.length} ("${item.examName}") linked to ClaimID ${newClaimId}...`);
+        
+        try {
+            const itemResponse = await addClaim(itemRequest);
+            console.log(`DEBUG: Item ${i + 1} Added Successfully. Response ID: ${itemResponse.id}`);
+            successCount++;
+        } catch (itemError: unknown) {
+            const error = itemError as { message: string; response?: { data: unknown } };
+            console.error(`DEBUG: Failed to add Item ${i + 1}. Payload:`, itemRequest);
+            console.error(`DEBUG: Backend Error Message:`, error.message);
+            if (error.response) {
+                console.error(`DEBUG: Backend Error Data:`, error.response.data);
+            }
+            throw new Error(`Failed to save exam "${item.examName}". The server rejected the data.`);
+        }
+      }
+
+      console.log(`DEBUG: Step 2 Success - All ${successCount} items added.`);
+
+      // --- Step 3: UI Updates on Success ---
+      alert("Exam claim and all items submitted successfully!");
+
+      // REFRESH the history table from the server to get the official list with statuses
+      await fetchClaimsHistory();
+
+      // Clear all forms
+      setNewClaims([]);
+      setName('');
+      setFaculty('');
+      setPosition('');
+      setBankName('');
+      setBranchName('');
+      setAccountHolderName('');
+      setAccountNumber('');
+
+    } catch (error: unknown) {
+      const err = error as { message: string };
+      console.error("DEBUG: Critical Submission Error:", error);
+      alert(`Failed to submit claims: ${err.message || "Unknown error occurred"}`);
+    } finally {
+      setIsSubmitting(false);
+      console.log("DEBUG: Submission process finished (finally block).");
+    }
   };
 
   return (
@@ -131,7 +230,13 @@ export function ExamClaims() {
                   <Label htmlFor="date" className="text-right">
                     Exam Date
                   </Label>
-                  <Input id="date" placeholder="MM/DD/YYYY" type="text" className="col-span-2 h-8" value={examDate} onChange={(e) => setExamDate(e.target.value)} />
+                  <Input 
+                    id="date" 
+                    type="date" 
+                    className="col-span-2 h-8" 
+                    value={examDate} 
+                    onChange={(e) => setExamDate(e.target.value)} 
+                  />
                 </div>
                 <div className="grid grid-cols-3 items-center gap-4">
                   <Label htmlFor="venue" className="text-right">
@@ -196,8 +301,8 @@ export function ExamClaims() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Faculty</SelectLabel>
-                  <SelectItem value="faculty1">Faculty of Law</SelectItem>
-                  <SelectItem value="faculty2">Faculty of Arts</SelectItem>
+                  <SelectItem value="Faculty of Law">Faculty of Law</SelectItem>
+                  <SelectItem value="Faculty of Arts">Faculty of Arts</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -211,14 +316,35 @@ export function ExamClaims() {
               <SelectContent>
                 <SelectGroup>
                   <SelectLabel>Position</SelectLabel>
-                  <SelectItem value="position1">Chief</SelectItem>
-                  <SelectItem value="position2">Assistant</SelectItem>
+                  <SelectItem value="Chief">Chief</SelectItem>
+                  <SelectItem value="Assistant">Assistant</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" className="w-full mt-4 bg-blue-600 hover:bg-blue-700 rounded-md text-base font-medium transition-all duration-200 ease-in-out">
-            Submit All Claims
+          <div>
+            <Label htmlFor="BankName" className="block mb-2">Bank Name</Label>
+            <Input id="BankName" type="text" placeholder="Enter Bank name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="BranchName" className="block mb-2">Branch Name</Label>
+            <Input id="BranchName" type="text" placeholder="Enter Branch name" value={branchName} onChange={(e) => setBranchName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="AccountHolderName" className="block mb-2">Account Holder Name</Label>
+            <Input id="AccountHolderName" type="text" placeholder="Enter Account Holder Name" value={accountHolderName} onChange={(e) => setAccountHolderName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="AccountNumber" className="block mb-2">Account Number</Label>
+            <Input id="AccountNumber" type="text" placeholder="Enter Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} />
+          </div>
+          
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className={`w-full mt-4 bg-blue-600 hover:bg-blue-700 rounded-md text-base font-medium transition-all duration-200 ease-in-out ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isSubmitting ? "Submitting..." : "Submit All Claims"}
           </Button>
         </form>
       </div>
@@ -237,25 +363,37 @@ export function ExamClaims() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {claims.map((claim, index) => (
-                <TableRow key={index}>
-                  <TableCell>{claim.examName}</TableCell>
-                  <TableCell>{claim.examDate}</TableCell>
-                  <TableCell>{claim.venue}</TableCell>
-                  <TableCell>Rs. {claim.amount.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${claim.status === 'Approved' ? 'bg-green-100 text-green-800' : ''}
-                        ${claim.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${claim.status === 'Rejected' ? 'bg-red-100 text-red-800' : ''}
-                      `}
-                    >
-                      {claim.status}
-                    </span>
-                  </TableCell>
+              {isLoadingClaims ? (
+                 <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">Loading history...</TableCell>
+                 </TableRow>
+              ) : claims.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center h-24">No history found.</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                claims.map((claim) => (
+                  <TableRow key={claim.id}>
+                    {/* Updated to match API Response Keys */}
+                    <TableCell>{claim["Exam Name/Code"]}</TableCell>
+                    <TableCell>{new Date(claim["Exam Date"]).toLocaleDateString()}</TableCell>
+                    <TableCell>{claim.Venue}</TableCell>
+                    {/* Handle String Amount from API */}
+                    <TableCell>Rs. {parseFloat(claim.Amount).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium
+                          ${claim.Status === 'APPROVED' ? 'bg-green-100 text-green-800' : ''}
+                          ${claim.Status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : ''}
+                          ${claim.Status === 'REJECTED' ? 'bg-red-100 text-red-800' : ''}
+                        `}
+                      >
+                        {claim.Status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

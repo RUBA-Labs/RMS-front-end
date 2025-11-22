@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/dialog";
 import { ChangePassword } from "./components/ChangePassword";
 import { getUserData } from '@/services/api/UserProfile/getUserData';
+// --- (1) ---
+// Added imports for updateUserData and its input type
+import { updateUserData, UpdateUserDataInput } from '@/services/api/UserProfile/updateUserData';
 import Link from "next/link";
 
 // Animated/illustrated avatars for each role
@@ -35,6 +38,8 @@ interface User {
   email: string;
   phone: string;
   role: string;
+  // Note: The API response might have more fields (id, createdAt, etc.)
+  // but this is fine as long as the response includes these.
 }
 
 export default function Profile() {
@@ -43,6 +48,12 @@ export default function Profile() {
   const [editPersonal, setEditPersonal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // --- (2) ---
+  // Added new state for saving/update operations
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -61,7 +72,7 @@ export default function Profile() {
         setProfile(userData);
         setTempProfile(userData);
         setError(null);
-      } catch (_) {
+      } catch {
         setError("Failed to fetch profile data.");
       } finally {
         setLoading(false);
@@ -76,6 +87,8 @@ export default function Profile() {
     if (profile) {
       setTempProfile(profile);
     }
+    // Clear any previous save errors when entering edit mode
+    setSaveError(null);
     if (section === "personal") setEditPersonal(true);
   };
 
@@ -83,14 +96,46 @@ export default function Profile() {
     if (profile) {
       setTempProfile(profile);
     }
+    setSaveError(null); // Clear errors on cancel
     if (section === "personal") setEditPersonal(false);
   };
 
-  const handleSave = (section: SectionType) => {
-    if (tempProfile) {
-      setProfile(tempProfile);
+  // --- (3) ---
+  // Modified handleSave to call the updateUserData API
+  const handleSave = async (section: SectionType) => {
+    if (section !== "personal" || !tempProfile) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    // Construct the data payload for the PATCH request
+    const dataToUpdate: UpdateUserDataInput = {
+      fullName: tempProfile.fullName,
+      department: tempProfile.department,
+      phone: tempProfile.phone,
+    };
+
+    try {
+      // Call the API
+      const updatedUser = await updateUserData(dataToUpdate);
+
+      // On success, update the *real* profile state with the API response
+      setProfile(updatedUser);
+      setTempProfile(updatedUser);
+      setEditPersonal(false);
+
+      // Show success dialog
+      setSuccessMessage("Profile updated successfully!");
+      setIsSuccessDialogOpen(true);
+
+    } catch (error: unknown) {
+      console.error("Failed to save profile:", error);
+      // Set the save error to display it in the UI
+      setSaveError((error as Error).message || "Failed to update profile.");
+    } finally {
+      // Stop the loading state
+      setIsSaving(false);
     }
-    if (section === "personal") setEditPersonal(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +187,7 @@ export default function Profile() {
                 </h3>
               </CardHeader>
               <CardContent className='flex flex-col items-center p-4 md:p-6 pt-2 gap-4'>
-                {/* Responsive profile image with fluid size adjustment */}
+                {/* ... (Profile Image code remains the same) ... */}
                 <div className='relative w-20 h-20 md:w-24 md:h-24 lg:w-36 lg:h-36 xl:w-42 xl:h-42 rounded-full overflow-hidden border-4 border-primary/20 bg-gray-100 dark:bg-zinc-800 shadow-sm'>
                   <Image
                     src={profileImage}
@@ -163,7 +208,7 @@ export default function Profile() {
                   <span className='text-sm text-gray-500 dark:text-gray-400'>{profile?.role}</span>
                 </div>
               </CardContent>
-              {/* Added: Change Password Button */}
+              {/* ... (Change Password Dialog code remains the same) ... */}
               <div className=' w-72 mx-auto'>
                 <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
                   <DialogTrigger asChild>
@@ -188,12 +233,26 @@ export default function Profile() {
             <Card className='bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-md flex flex-col justify-between'>
               <CardHeader className='flex flex-row items-center justify-between md:px-8 md:py-2 md:px-16 pb-0' >
                 <span className='text-lg font-bold'>Personal Information</span>
+                {/* --- (4) --- */}
+                {/* Updated buttons to use isSaving state */}
                 {editPersonal ? (
                   <div className='flex gap-2'>
-                    <Button size='sm' onClick={() => handleSave("personal")} className='gap-1'>
-                      Save <Save className='w-4 h-4 ml-1' />
+                    <Button 
+                      size='sm' 
+                      onClick={() => handleSave("personal")} 
+                      className='gap-1'
+                      disabled={isSaving}
+                    >
+                      {isSaving ? "Saving..." : "Save"}
+                      {!isSaving && <Save className='w-4 h-4 ml-1' />}
                     </Button>
-                    <Button size='sm' variant='ghost' onClick={() => handleCancel("personal")} className='gap-1'>
+                    <Button 
+                      size='sm' 
+                      variant='ghost' 
+                      onClick={() => handleCancel("personal")} 
+                      className='gap-1'
+                      disabled={isSaving}
+                    >
                       Cancel <X className='w-4 h-4 ml-1' />
                     </Button>
                   </div>
@@ -203,8 +262,15 @@ export default function Profile() {
                   </Button>
                 )}
               </CardHeader>
-              {/* Corrected: Removed extra wrapper div and adjusted padding */}
               <CardContent className='flex flex-col gap-4 p-4 md:py-2 md:px-16 pt-0 flex-1'>
+                {/* --- (5) --- */}
+                {/* Added saveError display */}
+                {saveError && (
+                  <div className='w-full text-center text-red-500 text-sm py-2'>
+                    {saveError}
+                  </div>
+                )}
+                {/* ... (All input fields remain the same) ... */}
                 <div className='flex justify-between items-center py-2 border-b last:border-b-0 border-gray-100 dark:border-zinc-800'>
                   <div className='text-sm text-gray-500 dark:text-gray-400'>Full Name</div>
                   {editPersonal ? (
@@ -258,20 +324,25 @@ export default function Profile() {
         </MainContainer>
       </div>
       <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-          <DialogContent className='sm:max-w-[425px]'>
-              <DialogHeader>
-                  <DialogTitle>Success</DialogTitle>
-                  <DialogDescription>
-                      {successMessage}
-                  </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                  <Button onClick={() => {
-                      setIsSuccessDialogOpen(false);
-                      window.location.reload();
-                  }}>Close</Button>
-              </DialogFooter>
-          </DialogContent>
+        <DialogContent className='sm:max-w-[425px]'>
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription>
+              {successMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            {/* --- (6) --- */}
+            {/* Modified Close button to only reload on password change */}
+            <Button onClick={() => {
+              setIsSuccessDialogOpen(false);
+              // Only reload if the success message was for a password change
+              if (successMessage.toLowerCase().includes("password")) {
+                window.location.reload();
+              }
+            }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
