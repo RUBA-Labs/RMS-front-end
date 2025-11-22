@@ -127,8 +127,7 @@ export function LabManagement() {
   // --- Load computers when selected lab changes ---
   useEffect(() => {
     const loadComputersForLab = async () => {
-      if (!selectedLab) {
-        console.log("[LabManagement] No lab selected");
+      if (!selectedLab || (Array.isArray(selectedLab.computers) && selectedLab.computers.length > 0)) {
         return;
       }
 
@@ -175,7 +174,7 @@ export function LabManagement() {
     };
 
     loadComputersForLab();
-  }, [selectedLab?.id]);
+  }, [selectedLab]);
 
   // --- Lab Management Handlers ---
   const handleOpenLabDialog = (lab?: Lab) => {
