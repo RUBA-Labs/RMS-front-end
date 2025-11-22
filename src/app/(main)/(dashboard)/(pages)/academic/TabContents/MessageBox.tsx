@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -20,8 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// Import the API service
+// Import the API services
 import { createAnnouncement } from '@/services/api/Announcements/CreateAnnouncement';
+import { getAnnouncementsCurrentUser } from '@/services/api/Announcements/GetAnnouncementsCurrentUser';
 
 interface Announcement {
   title: string;
@@ -30,37 +31,51 @@ interface Announcement {
   message: string;
 }
 
-const initialSentAnnouncements: Announcement[] = [
-  {
-    title: "Scheduled Maintenance Break",
-    viewer: "student",
-    date: "2025-11-15",
-    message: "The system will be down for scheduled maintenance on 2025-11-20 from 2:00 AM to 4:00 AM. Please save all your work before this time.",
-  },
-  {
-    title: "New Feature: Dark Mode",
-    viewer: "academic",
-    date: "2025-11-10",
-    message: "We are excited to announce that dark mode is now available in the user settings. You can enable it from the profile settings page.",
-  },
-  {
-    title: "Welcome to the New Semester",
-    viewer: "non_academic",
-    date: "2025-09-01",
-    message: "Welcome back to all students and staff. We wish you a successful semester. Please check your timetables for updates.",
-  },
-];
-
 export function MessageBox() {
   const [title, setTitle] = useState("");
   const [viewer, setViewer] = useState("");
   const [message, setMessage] = useState("");
-  const [sentAnnouncements, setSentAnnouncements] = useState<Announcement[]>(initialSentAnnouncements);
+  
+  // State for the list of sent announcements
+  const [sentAnnouncements, setSentAnnouncements] = useState<Announcement[]>([]);
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   
-  // Loading state for the send button
+  // Loading states
   const [isSending, setIsSending] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // Function to fetch announcements from the backend
+  const fetchAnnouncements = async () => {
+    try {
+      const data = await getAnnouncementsCurrentUser();
+      
+      // 1. Sort by raw createdAt timestamp (Desc) BEFORE mapping to string date
+      // This ensures exact time sorting, so newer items on the same day appear first
+      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // 2. Map the API response to the local UI interface
+      const mappedData: Announcement[] = data.map((item) => ({
+        title: item.title,
+        viewer: item.selectedViewer,
+        message: item.message,
+        // Format the date (YYYY-MM-DD)
+        date: new Date(item.createdAt).toISOString().split('T')[0],
+      }));
+
+      setSentAnnouncements(mappedData);
+    } catch (error) {
+      console.error("Failed to load sent announcements", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   const handleSendAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +86,7 @@ export function MessageBox() {
         return;
     }
 
-    // 2. Length Validation (Fixes the 400 Error)
+    // 2. Length Validation (Prevents 400 Bad Request)
     if (title.length < 5) {
         alert("Title must be at least 5 characters long.");
         return;
@@ -85,34 +100,24 @@ export function MessageBox() {
     setIsSending(true);
 
     try {
-      // 3. Call the backend API
+      // 3. Call the backend API to create
       await createAnnouncement({
         title,
         message,
         selectedViewer: viewer, 
       });
 
-      // 4. On success, create the local object to update UI immediately
-      const newAnnouncement: Announcement = {
-        title,
-        viewer,
-        message,
-        date: new Date().toISOString().split('T')[0], // Generate current date
-      };
-
-      // 5. Update local list
-      setSentAnnouncements([newAnnouncement, ...sentAnnouncements]);
-      
-      // 6. Reset form
+      // 4. Reset form
       setTitle("");
       setViewer("");
       setMessage("");
 
       alert("Announcement sent successfully!");
 
+      // 5. Refresh the list to show the newly created item from the server
+      await fetchAnnouncements();
+
     } catch (error) {
-      // Error is logged in the service, here we just show the alert
-      // The error message thrown by the service is now clean (see CreateAnnouncement.ts update)
       alert(error instanceof Error ? error.message : "Failed to send announcement.");
     } finally {
       setIsSending(false);
@@ -201,19 +206,25 @@ export function MessageBox() {
               <CardTitle>Sent Announcements</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 max-h-[80vh] overflow-y-auto">
-              {sentAnnouncements.map((announcement, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4 flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold">{announcement.title}</h3>
-                      <p className="text-sm text-gray-500">{announcement.date}</p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => handleViewAnnouncement(announcement)}>
-                      View
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {isLoadingHistory ? (
+                <div className="text-center text-gray-500 p-4">Loading history...</div>
+              ) : sentAnnouncements.length === 0 ? (
+                <div className="text-center text-gray-500 p-4">No announcements sent yet.</div>
+              ) : (
+                sentAnnouncements.map((announcement, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <h3 className="font-semibold">{announcement.title}</h3>
+                        <p className="text-sm text-gray-500">{announcement.date}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleViewAnnouncement(announcement)}>
+                        View
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

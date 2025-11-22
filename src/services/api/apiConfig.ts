@@ -63,4 +63,5 @@ export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers
 
 //Announcements
 export const CREATE_ANNOUNCEMENT_API_URL = `${API_BASE_URL}announcements`;
+export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/my-announcements`;
 
