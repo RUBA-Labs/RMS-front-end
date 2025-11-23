@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -19,38 +19,18 @@ import { Card, CardContent } from '@/components/ui/card';
 // --- API Service Imports ---
 import { createExamClaim, CreateExamClaimRequest } from '@/services/api/ExamClaims/CreateExamClaim';
 import { addClaim, AddClaimRequest } from '@/services/api/ExamClaims/AddClaim';
+// Import the Get Service and the Interface
+import { getCurrentUserClaims, ExamClaimItem } from '@/services/api/ExamClaims/GetCurrentUserClaim';
 
 // --- Types ---
 
-type ClaimStatus = "Pending" | "Approved" | "Rejected";
-
-type Claim = {
+// Type for the items being currently added/drafted in the UI
+type NewClaim = {
   examName: string;
   examDate: string;
   venue: string;
   amount: number;
-  status: ClaimStatus;
 };
-
-type NewClaim = Omit<Claim, 'status'>;
-
-// Mock data
-const claimsData: Claim[] = [
-  {
-    examName: "CS101 Midterm",
-    examDate: "2025-10-15",
-    venue: "Hall A",
-    amount: 5000,
-    status: "Approved",
-  },
-  {
-    examName: "MA203 Final",
-    examDate: "2025-11-20",
-    venue: "Hall B",
-    amount: 7500,
-    status: "Pending",
-  },
-];
 
 export function ExamClaims() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -66,7 +46,10 @@ export function ExamClaims() {
   const [accountNumber, setAccountNumber] = useState('');
 
   // Claims Lists
-  const [claims, setClaims] = useState<Claim[]>(claimsData); 
+  // Updated to use the API interface
+  const [claims, setClaims] = useState<ExamClaimItem[]>([]); 
+  const [isLoadingClaims, setIsLoadingClaims] = useState(true);
+  
   const [newClaims, setNewClaims] = useState<NewClaim[]>([]); 
 
   // Popover inputs
@@ -74,6 +57,24 @@ export function ExamClaims() {
   const [examDate, setExamDate] = useState('');
   const [venue, setVenue] = useState('');
   const [amount, setAmount] = useState('');
+
+  // --- Fetch Data Logic ---
+  const fetchClaimsHistory = async () => {
+    try {
+      setIsLoadingClaims(true);
+      const data = await getCurrentUserClaims();
+      setClaims(data);
+    } catch (error) {
+      console.error("Failed to fetch claims history:", error);
+    } finally {
+      setIsLoadingClaims(false);
+    }
+  };
+
+  // Load claims on component mount
+  useEffect(() => {
+    fetchClaimsHistory();
+  }, []);
 
   const handleAddClaimToBatch = () => {
     if (examName && examDate && venue && amount) {
@@ -133,11 +134,6 @@ export function ExamClaims() {
       const newClaimId = headerResponse.id; 
       console.log(`DEBUG: Step 1 Success - Claim Header Created. NEW ID: ${newClaimId}`);
 
-      // // --- Step 1.5: 5-Second Delay ---
-      // console.log("DEBUG: ⏳ Waiting 5 seconds for backend to register the ID...");
-    
-      // console.log("DEBUG: ⏳ 5-second delay complete. Proceeding to add items.");
-
       // --- Step 2: Loop through items SEQUENTIALLY ---
       console.log(`DEBUG: Step 2 - Starting loop to add ${newClaims.length} items...`);
       
@@ -150,7 +146,7 @@ export function ExamClaims() {
         
         const itemRequest: AddClaimRequest = {
             examName: item.examName,
-            examDate: item.examDate, // Now this will be a valid YYYY-MM-DD string
+            examDate: item.examDate, 
             venue: item.venue,
             amount: item.amount,
             claimId: newClaimId 
@@ -159,20 +155,17 @@ export function ExamClaims() {
         console.log(`DEBUG: Sending Item ${i + 1}/${newClaims.length} ("${item.examName}") linked to ClaimID ${newClaimId}...`);
         
         try {
-            // Send request and wait for it to finish
             const itemResponse = await addClaim(itemRequest);
             console.log(`DEBUG: Item ${i + 1} Added Successfully. Response ID: ${itemResponse.id}`);
             successCount++;
         } catch (itemError: unknown) {
             const error = itemError as { message: string; response?: { data: unknown } };
-            // Detailed Error Logging
             console.error(`DEBUG: Failed to add Item ${i + 1}. Payload:`, itemRequest);
             console.error(`DEBUG: Backend Error Message:`, error.message);
             if (error.response) {
                 console.error(`DEBUG: Backend Error Data:`, error.response.data);
             }
-            
-            throw new Error(`Failed to save exam "${item.examName}". The server rejected the data (likely invalid date or format). Check console.`);
+            throw new Error(`Failed to save exam "${item.examName}". The server rejected the data.`);
         }
       }
 
@@ -181,9 +174,8 @@ export function ExamClaims() {
       // --- Step 3: UI Updates on Success ---
       alert("Exam claim and all items submitted successfully!");
 
-      // Update local history table
-      const submittedClaims: Claim[] = newClaims.map(claim => ({ ...claim, status: 'Pending' as const }));
-      setClaims([...claims, ...submittedClaims]);
+      // REFRESH the history table from the server to get the official list with statuses
+      await fetchClaimsHistory();
 
       // Clear all forms
       setNewClaims([]);
@@ -238,7 +230,6 @@ export function ExamClaims() {
                   <Label htmlFor="date" className="text-right">
                     Exam Date
                   </Label>
-                  {/* CHANGED TYPE TO 'date' TO FIX 400 ERROR */}
                   <Input 
                     id="date" 
                     type="date" 
@@ -372,25 +363,37 @@ export function ExamClaims() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {claims.map((claim, index) => (
-                <TableRow key={index}>
-                  <TableCell>{claim.examName}</TableCell>
-                  <TableCell>{claim.examDate}</TableCell>
-                  <TableCell>{claim.venue}</TableCell>
-                  <TableCell>Rs. {claim.amount.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium
-                        ${claim.status === 'Approved' ? 'bg-green-100 text-green-800' : ''}
-                        ${claim.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                        ${claim.status === 'Rejected' ? 'bg-red-100 text-red-800' : ''}
-                      `}
-                    >
-                      {claim.status}
-                    </span>
-                  </TableCell>
+              {isLoadingClaims ? (
+                 <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">Loading history...</TableCell>
+                 </TableRow>
+              ) : claims.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center h-24">No history found.</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                claims.map((claim) => (
+                  <TableRow key={claim.id}>
+                    {/* Updated to match API Response Keys */}
+                    <TableCell>{claim["Exam Name/Code"]}</TableCell>
+                    <TableCell>{new Date(claim["Exam Date"]).toLocaleDateString()}</TableCell>
+                    <TableCell>{claim.Venue}</TableCell>
+                    {/* Handle String Amount from API */}
+                    <TableCell>Rs. {parseFloat(claim.Amount).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium
+                          ${claim.Status === 'APPROVED' ? 'bg-green-100 text-green-800' : ''}
+                          ${claim.Status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : ''}
+                          ${claim.Status === 'REJECTED' ? 'bg-red-100 text-red-800' : ''}
+                        `}
+                      >
+                        {claim.Status}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>

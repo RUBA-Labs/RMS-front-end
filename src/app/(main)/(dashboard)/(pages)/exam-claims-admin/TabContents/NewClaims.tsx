@@ -9,48 +9,46 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-
-interface Claim {
-  examName: string;
-  examDate: string;
-  venue: string;
-  amount: number;
-  status: "Pending" | "Approved" | "Rejected";
-  fullName: string;
-  faculty: string;
-  position: string;
-  bankName: string;
-  branchName: string;
-  accountHolderName: string;
-  accountNumber: string;
-}
+import { ExamClaimItem } from "@/services/api/ExamClaims/GetAllExamClaimItems";
+import { updateStatusClaim, ClaimStatusType } from "@/services/api/ExamClaims/UpdateStatusClaim";
 
 interface NewClaimProps {
-  claims: Claim[];
-  handleUpdateClaimStatus: (claim: Claim, newStatus: "Pending" | "Approved" | "Rejected") => void;
+  claims: ExamClaimItem[];
+  handleUpdateClaimStatus: (claimId: number, newStatus: ClaimStatusType) => void;
 }
 
 export function NewClaim({ claims, handleUpdateClaimStatus }: NewClaimProps) {
-  const pendingClaims = claims.filter(claim => claim.status === "Pending");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<ExamClaimItem | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleViewClaim = (claim: Claim) => {
+  const pendingClaims = claims.filter(claim => claim.status.status === "PENDING");
+
+  const handleViewClaim = (claim: ExamClaimItem) => {
     setSelectedClaim(claim);
     setIsDialogOpen(true);
   };
 
-  const handleApprove = () => {
-    if (selectedClaim) {
-      handleUpdateClaimStatus(selectedClaim, "Approved");
-      setIsDialogOpen(false);
-    }
-  };
+  const handleStatusUpdate = async (status: ClaimStatusType) => {
+    if (!selectedClaim) return;
 
-  const handleReject = () => {
-    if (selectedClaim) {
-      handleUpdateClaimStatus(selectedClaim, "Rejected");
+    const isConfirmed = window.confirm(
+      `Are you sure you want to mark this claim as ${status}?`
+    );
+
+    if (!isConfirmed) return;
+
+    setIsUpdating(true);
+
+    try {
+      await updateStatusClaim(selectedClaim.id, status);
+      handleUpdateClaimStatus(selectedClaim.id, status);
       setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update status", error);
+      alert("Failed to update claim status. Please try again.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -69,19 +67,25 @@ export function NewClaim({ claims, handleUpdateClaimStatus }: NewClaimProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pendingClaims.map((claim, index) => (
-              <TableRow key={index}>
-                <TableCell>{claim.examName}</TableCell>
-                <TableCell>{claim.fullName}</TableCell>
-                <TableCell>{claim.examDate}</TableCell>
-                <TableCell>Rs. {claim.amount.toFixed(2)}</TableCell>
-                <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => handleViewClaim(claim)}>
-                    View
-                  </Button>
-                </TableCell>
+            {pendingClaims.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-4">No pending claims found.</TableCell>
               </TableRow>
-            ))}
+            ) : (
+              pendingClaims.map((claim) => (
+                <TableRow key={claim.id}>
+                  <TableCell>{claim.examName}</TableCell>
+                  <TableCell>{claim.examClaim.name}</TableCell>
+                  <TableCell>{claim.examDate}</TableCell>
+                  <TableCell>Rs. {parseFloat(claim.amount).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Button variant="outline" size="sm" onClick={() => handleViewClaim(claim)}>
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -95,20 +99,44 @@ export function NewClaim({ claims, handleUpdateClaimStatus }: NewClaimProps) {
                 {selectedClaim.examDate} - {selectedClaim.venue}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-2">
-              <p><strong>Full Name:</strong> {selectedClaim.fullName}</p>
-              <p><strong>Faculty:</strong> {selectedClaim.faculty}</p>
-              <p><strong>Position:</strong> {selectedClaim.position}</p>
-              <p><strong>Amount:</strong> Rs. {selectedClaim.amount.toFixed(2)}</p>
-              <hr/>
-              <p><strong>Bank Name:</strong> {selectedClaim.bankName}</p>
-              <p><strong>Branch Name:</strong> {selectedClaim.branchName}</p>
-              <p><strong>Account Holder Name:</strong> {selectedClaim.accountHolderName}</p>
-              <p><strong>Account Number:</strong> {selectedClaim.accountNumber}</p>
+            
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-1">
+                <p className="font-semibold">Full Name:</p> <p>{selectedClaim.examClaim.name}</p>
+                <p className="font-semibold">Faculty:</p> <p>{selectedClaim.examClaim.faculty}</p>
+                <p className="font-semibold">Position:</p> <p>{selectedClaim.examClaim.position}</p>
+                <p className="font-semibold">Amount:</p> <p>Rs. {parseFloat(selectedClaim.amount).toFixed(2)}</p>
+              </div>
+              
+              <hr className="my-4"/>
+              
+              <div className="grid grid-cols-2 gap-1">
+                <p className="font-semibold">Bank Name:</p> <p>{selectedClaim.examClaim.bankName}</p>
+                <p className="font-semibold">Branch Name:</p> <p>{selectedClaim.examClaim.branchName}</p>
+                <p className="font-semibold">Account Holder:</p> <p>{selectedClaim.examClaim.accountHolderName}</p>
+                <p className="font-semibold">Account Number:</p> <p>{selectedClaim.examClaim.accountNumber}</p>
+              </div>
             </div>
+
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" size="sm" className="bg-green-500 text-white" onClick={handleApprove}>Approve</Button>
-              <Button variant="outline" size="sm" className="bg-red-500 text-white" onClick={handleReject}>Reject</Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-green-600 hover:bg-green-700 text-white border-0" 
+                onClick={() => handleStatusUpdate("APPROVED")}
+                disabled={isUpdating}
+              >
+                {isUpdating ? 'Processing...' : 'Approve'}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-red-600 hover:bg-red-700 text-white border-0" 
+                onClick={() => handleStatusUpdate("REJECTED")}
+                disabled={isUpdating}
+              >
+                 {isUpdating ? 'Processing...' : 'Reject'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

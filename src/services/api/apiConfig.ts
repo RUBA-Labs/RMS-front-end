@@ -40,12 +40,8 @@ export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId:
 
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
-export const USER_PROFILE_API_URL_UPDATE_PROFILE = `${API_BASE_URL}user-profile`;
 export const USER_PROFILE_API_URL_CHANGE_PASSWORD = `${API_BASE_URL}user-profile/change-password`;
-
-//exam claims module in the backend
-export const EXAM_CLAIMS_API_URL_CREATE_EXAM_CLAIM = `${API_BASE_URL}exam-claims`;
-export const ADD_CLAIMS = `${API_BASE_URL}exam-claims/add-item`;
+export const USER_PROFILE_API_URL_UPDATE_PROFILE = `${API_BASE_URL}user-profile`;
 
 //computer labs module in the backend
 export const CREATE_A_NEW_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
@@ -53,7 +49,23 @@ export const RETRIEVE_ALL_COMPUTER_LABS_API_URL = `${API_BASE_URL}computer-labs`
 export const UPDATE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
 export const DELETE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
 
+//exam claims module in the backend
+export const EXAM_CLAIMS_API_URL_CREATE_EXAM_CLAIM = `${API_BASE_URL}exam-claims`;
+export const ADD_CLAIMS = `${API_BASE_URL}exam-claims/add-item`;
+export const RETRIEVE_ALL_MY_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/my-items`;
+export const RETRIEVE_ALL_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/items`;
+export const UPDATE_STATUS_CLAIM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}/status`;
+export const DELETE_EXAM_CLAIM_ITEM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}`;
+
 
 //computer module in the backend
 export const CREATE_A_NEW_COMPUTER_API_URL = `${API_BASE_URL}computers`;
 export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers`;
+
+//Announcements
+export const CREATE_ANNOUNCEMENT_API_URL = `${API_BASE_URL}announcements`;
+export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/my-announcements`;
+
+//time table management  module in the backend
+export const TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME = `${API_BASE_URL}timetable-management/schedule/by-day-time`;
+
