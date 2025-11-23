@@ -69,3 +69,7 @@ export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/m
 //time table management  module in the backend
 export const TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME = `${API_BASE_URL}timetable-management/schedule/by-day-time`;
 
+//Time Conflict Management module in the backend
+export const CREATE_A_NEW_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
+export const RETRIEVE_ALL_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
+export const VIEW_STATUS_CONFLICT_API_URL_BY_ID = (id: number) => `${API_BASE_URL}time-conflict-management/${id}/view-status`;
