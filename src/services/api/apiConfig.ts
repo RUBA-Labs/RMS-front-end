@@ -57,10 +57,13 @@ export const RETRIEVE_ALL_EXAM_CLAIMS_API_URL = `${API_BASE_URL}exam-claims/item
 export const UPDATE_STATUS_CLAIM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}/status`;
 export const DELETE_EXAM_CLAIM_ITEM_API_URL_BY_ID = (claimId: number) => `${API_BASE_URL}exam-claims/item/${claimId}`;
 
-
 //computer module in the backend
 export const CREATE_A_NEW_COMPUTER_API_URL = `${API_BASE_URL}computers`;
 export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers`;
+
+//lab session module in the backend
+export const CREATE_LAB_SESSION_API_URL = `${API_BASE_URL}lab-sessions`;
+export const RETRIEVE_ALL_LAB_SESSIONS_API_URL = `${API_BASE_URL}lab-sessions`;
 
 //Announcements
 export const CREATE_ANNOUNCEMENT_API_URL = `${API_BASE_URL}announcements`;
