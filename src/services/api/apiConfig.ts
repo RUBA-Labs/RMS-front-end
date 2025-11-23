@@ -76,3 +76,8 @@ export const UPDATE_TIME_SLOT_BY_ID_API_URL =  (id: number) => `${API_BASE_URL}t
 export const CREATE_A_NEW_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
 export const RETRIEVE_ALL_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
 export const VIEW_STATUS_CONFLICT_API_URL_BY_ID = (id: number) => `${API_BASE_URL}time-conflict-management/${id}/view-status`;
+
+
+//my course module in the backend
+export const MY_COURSE_API_URL_ADD_MY_COURSE = `${API_BASE_URL}my-course-select`;
+export const GET_AVAILABLE_COURSES_API_URL = `${API_BASE_URL}my-course-select/available-courses`;

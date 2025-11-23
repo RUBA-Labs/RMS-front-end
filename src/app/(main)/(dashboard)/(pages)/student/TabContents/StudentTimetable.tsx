@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,7 +8,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Clock, 
+  Plus, 
+  Check, 
+  Loader2,
+  X // Added X icon for the delete button
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -16,21 +25,51 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils"; // Ensure you have this utility or remove 'cn' usage
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
-// Import the service and type
+// ----------------------------------------------------------------------
+// 1. API IMPORTS 
+// ----------------------------------------------------------------------
 import { 
   getFilteredTimetable, 
   FilteredScheduleItem 
 } from "@/services/api/TimetableManagement/FilteredDayofTheWeekAndStartTime";
 
-// Define available time slots (08:00 AM to 05:00 PM)
+import { 
+  getAvailableCoursesList, 
+  AvailableCourse 
+} from "@/services/api/MyCourses/getAvailableCousesList"; 
+
+import { 
+  addMyCourse,
+  CourseInput 
+} from "@/services/api/MyCourses/AddMyCouse"; 
+
+// ----------------------------------------------------------------------
+// 2. CONSTANTS & HELPERS
+// ----------------------------------------------------------------------
 const TIME_SLOTS = [
   "08:00:00", "09:00:00", "10:00:00", "11:00:00", "12:00:00",
   "13:00:00", "14:00:00", "15:00:00", "16:00:00", "17:00:00"
 ];
 
-// Helper to format time string (08:00:00 -> 08:00 AM) for display
 const formatTimeDisplay = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(':');
   const h = parseInt(hours, 10);
@@ -39,39 +78,51 @@ const formatTimeDisplay = (timeStr: string) => {
   return `${displayH}:${minutes} ${ampm}`;
 };
 
+// ----------------------------------------------------------------------
+// 3. MAIN COMPONENT
+// ----------------------------------------------------------------------
 const StudentTimetable = () => {
-  // 1. Initialize Date: If current time > 5 PM, default to tomorrow
+  console.log("--- RENDER: StudentTimetable Component ---");
+
+  // --- STATE: Timetable Logic ---
   const [currentDate, setCurrentDate] = useState<Date>(() => {
     const now = new Date();
     const currentHour = now.getHours();
-    // If it's after 5 PM (17:00), move to next day
+    console.log("DEBUG: Initializing Date. Current Hour:", currentHour);
     if (currentHour >= 17) {
       now.setDate(now.getDate() + 1);
+      console.log("DEBUG: After 5 PM, defaulting to tomorrow:", now);
     }
     return now;
   });
 
-  // 2. Initialize Time: Calculate the next logical slot
   const [selectedStartTime, setSelectedStartTime] = useState<string>(() => {
     const now = new Date();
     const currentHour = now.getHours();
     
-    // If outside working hours (Before 8 AM or After 5 PM), default to 8 AM
     if (currentHour < 8 || currentHour >= 17) {
+      console.log("DEBUG: Outside working hours, defaulting start time to 08:00:00");
       return "08:00:00";
     }
-    
-    // Otherwise, pick the *next* hour (e.g., if 9:15 AM, pick 10:00 AM)
-    // We cap it at 17 (5 PM)
     const nextHour = Math.min(currentHour + 1, 17);
-    return `${nextHour.toString().padStart(2, '0')}:00:00`;
+    const time = `${nextHour.toString().padStart(2, '0')}:00:00`;
+    console.log("DEBUG: Defaulting start time to next hour:", time);
+    return time;
   });
 
   const [timetableData, setTimetableData] = useState<FilteredScheduleItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingTimetable, setLoadingTimetable] = useState(false);
 
-  // Navigation Handlers
+  // --- STATE: Add Subject Logic ---
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [availableCourses, setAvailableCourses] = useState<AvailableCourse[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]); 
+  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [submittingCourses, setSubmittingCourses] = useState(false);
+
+  // --- HANDLERS: Navigation ---
   const handlePrevDay = () => {
+    console.log("ACTION: User clicked Previous Day");
     setCurrentDate((prevDate) => {
       const newDate = new Date(prevDate);
       newDate.setDate(newDate.getDate() - 1);
@@ -80,6 +131,7 @@ const StudentTimetable = () => {
   };
 
   const handleNextDay = () => {
+    console.log("ACTION: User clicked Next Day");
     setCurrentDate((prevDate) => {
       const newDate = new Date(prevDate);
       newDate.setDate(newDate.getDate() + 1);
@@ -87,27 +139,130 @@ const StudentTimetable = () => {
     });
   };
 
-  // Fetch Data Effect
+  // --- EFFECT 1: Fetch Timetable ---
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchTimetable = async () => {
+      const dayName = currentDate.toLocaleDateString("en-US", { weekday: "long" });
+      
+      console.log(`DEBUG: EFFECT 1 Triggered. Fetching Timetable for ${dayName} at ${selectedStartTime}`);
+      setLoadingTimetable(true);
+      
       try {
-        // Format Day string (e.g., "Monday")
-        const dayName = currentDate.toLocaleDateString("en-US", { weekday: "long" });
-        
-        // Call the service
         const data = await getFilteredTimetable(dayName, selectedStartTime);
+        console.log("DEBUG: Timetable API Response:", data);
         setTimetableData(data);
       } catch (error) {
-        console.error("Failed to fetch timetable:", error);
+        console.error("ERROR: Failed to fetch timetable:", error);
         setTimetableData([]);
       } finally {
-        setLoading(false);
+        setLoadingTimetable(false);
+        console.log("DEBUG: Timetable Fetch Complete. Loading state set to false.");
       }
     };
 
-    fetchData();
+    fetchTimetable();
   }, [currentDate, selectedStartTime]);
+
+  // --- EFFECT 2: Fetch Courses ONLY when Dialog is Open, Clear RAM when Closed ---
+  useEffect(() => {
+    console.log("DEBUG: EFFECT 2 Triggered. Dialog Open State:", isDialogOpen);
+    let isMounted = true;
+
+    if (isDialogOpen) {
+      // 1. Dialog is OPEN: Fetch data into memory
+      const fetchCourses = async () => {
+        console.log("DEBUG: Dialog is OPEN. Starting to fetch available courses...");
+        setLoadingCourses(true);
+        try {
+          const courses = await getAvailableCoursesList();
+          console.log("DEBUG: Courses API Response Received. Items count:", courses.length);
+          if (isMounted) {
+            setAvailableCourses(courses);
+            console.log("DEBUG: Available courses state updated.");
+          }
+        } catch (error) {
+          console.error("ERROR: Failed to load available courses", error);
+        } finally {
+          if (isMounted) {
+            setLoadingCourses(false);
+            console.log("DEBUG: Course loading state set to false.");
+          }
+        }
+      };
+      fetchCourses();
+    } else {
+      // 2. Dialog is CLOSED: Clear arrays to free up RAM
+      console.log("DEBUG: Dialog is CLOSED. Clearing availableCourses and selectedCourses from memory.");
+      setAvailableCourses([]); 
+      setSelectedCourses([]); 
+    }
+
+    return () => { 
+      isMounted = false; 
+      console.log("DEBUG: Cleanup for Course Effect running.");
+    };
+  }, [isDialogOpen]);
+
+  // --- HANDLER: Toggle Course Selection (Add/Remove) ---
+  const toggleCourseSelection = (courseCode: string) => {
+    console.log("ACTION: Toggling selection for course:", courseCode);
+    setSelectedCourses((prev) => {
+      const isAlreadySelected = prev.includes(courseCode);
+      const newSelection = isAlreadySelected
+        ? prev.filter((code) => code !== courseCode)
+        : [...prev, courseCode];
+      
+      console.log("DEBUG: New Selected Courses List:", newSelection);
+      return newSelection;
+    });
+  };
+
+  // --- HANDLER: Explicit Remove (For Delete Button) ---
+  const removeCourse = (courseCode: string) => {
+    console.log("ACTION: Removing course via delete button:", courseCode);
+    setSelectedCourses((prev) => prev.filter((code) => code !== courseCode));
+  };
+
+  // --- HANDLER: Submit New Courses ---
+  const handleSubmitCourses = async () => {
+    console.log("ACTION: Submit button clicked. Selected Courses:", selectedCourses);
+    
+    if (selectedCourses.length === 0) {
+      console.warn("WARNING: No courses selected. Aborting submit.");
+      return;
+    }
+
+    setSubmittingCourses(true);
+    try {
+      // FIX: Lookup the full course object to check if a name exists
+      const coursesPayload: CourseInput[] = selectedCourses.map(code => {
+        // Try to find the course in the available list to see if it has a name
+        const courseObj = availableCourses.find(c => c.course_code === code);
+        
+        return {
+          course_code: code,
+          // Use existing name if available, otherwise default to "not set yet"
+          course_name: (courseObj as any).course_name || "not set yet"
+        };
+      });
+
+      console.log("DEBUG: Sending Payload to AddMyCourse API:", JSON.stringify({ courses: coursesPayload }));
+
+      await addMyCourse(coursesPayload);
+      
+      console.log("SUCCESS: Courses added successfully.");
+
+      // Close dialog (This triggers Effect 2 to clear RAM)
+      setIsDialogOpen(false);
+      console.log("DEBUG: Dialog closed programmatically.");
+      
+    } catch (error) {
+      console.error("ERROR: Failed to add courses:", error);
+    } finally {
+      setSubmittingCourses(false);
+      console.log("DEBUG: Submitting state set to false.");
+    }
+  };
 
   const formattedDate = currentDate.toLocaleDateString("en-US", {
     weekday: "long",
@@ -117,7 +272,143 @@ const StudentTimetable = () => {
   });
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+      
+      {/* -------------------------------------------------------- */}
+      {/* SECTION A: Add My Subject (Dialog)                       */}
+      {/* -------------------------------------------------------- */}
+      <div className="flex items-center justify-between bg-card p-4 rounded-lg shadow-sm border">
+        <div>
+            <h2 className="text-lg font-semibold">Course Management</h2>
+            <p className="text-sm text-muted-foreground">Manage your enrolled subjects here.</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          console.log("ACTION: Dialog onOpenChange triggered. New state:", open);
+          setIsDialogOpen(open);
+        }}>
+          <DialogTrigger asChild>
+            <Button className="gap-2" onClick={() => console.log("ACTION: Add My Subject Button Clicked")}>
+              <Plus className="h-4 w-4" />
+              Add My Subject
+            </Button>
+          </DialogTrigger>
+          
+          {/* UPDATED: Increased width for two columns */}
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Add New Subjects</DialogTitle>
+              <DialogDescription>
+                Search available courses on the left and manage your selection on the right.
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* TWO COLUMN LAYOUT */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 h-[400px]">
+              
+              {/* COLUMN 1: Search & Add */}
+              <div className="flex flex-col gap-2 h-full">
+                <h3 className="font-semibold text-sm">Available Courses</h3>
+                <div className="h-full border rounded-md overflow-hidden">
+                  <Command className="h-full">
+                    <CommandInput placeholder="Search course code..." onValueChange={(val) => console.log("DEBUG: Search input:", val)}/>
+                    <CommandList className="h-full max-h-[320px] overflow-y-auto">
+                      {loadingCourses ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading...
+                        </div>
+                      ) : (
+                        <>
+                          <CommandEmpty>No course found.</CommandEmpty>
+                          <CommandGroup>
+                            {availableCourses.map((course) => {
+                              const isSelected = selectedCourses.includes(course.course_code);
+                              return (
+                                <CommandItem
+                                  key={course.id || course.course_code}
+                                  value={course.course_code}
+                                  onSelect={() => toggleCourseSelection(course.course_code)}
+                                >
+                                  <div className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                  )}>
+                                    <Check className={cn("h-4 w-4")} />
+                                  </div>
+                                  <span>{course.course_code}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </>
+                      )}
+                    </CommandList>
+                  </Command>
+                </div>
+              </div>
+
+              {/* COLUMN 2: Selected List (Delete Button Here) */}
+              <div className="flex flex-col gap-2 h-full">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-sm">Selected Courses</h3>
+                  <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                    {selectedCourses.length}
+                  </span>
+                </div>
+                
+                <div className="h-full border rounded-md p-2 overflow-y-auto bg-muted/30">
+                  {selectedCourses.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">
+                      No courses selected yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedCourses.map((code) => (
+                        <div 
+                          key={code} 
+                          className="flex items-center justify-between p-3 rounded-md border bg-card shadow-sm animate-in fade-in zoom-in-95 duration-200"
+                        >
+                          <span className="font-medium text-sm">{code}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => removeCourse(code)}
+                            title="Remove course"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            <DialogFooter className="mt-2">
+              <Button 
+                onClick={handleSubmitCourses} 
+                disabled={submittingCourses || selectedCourses.length === 0}
+                className="w-full sm:w-auto"
+              >
+                {submittingCourses ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  `Save ${selectedCourses.length} Course${selectedCourses.length !== 1 ? 's' : ''}`
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* -------------------------------------------------------- */}
+      {/* SECTION B: Timetable Display                             */}
+      {/* -------------------------------------------------------- */}
       <Card className="w-full shadow-md">
         <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-2">
           <div className="flex items-center justify-between w-full sm:w-auto gap-4">
@@ -146,7 +437,10 @@ const StudentTimetable = () => {
                   key={time}
                   variant={selectedStartTime === time ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSelectedStartTime(time)}
+                  onClick={() => {
+                    console.log("ACTION: Time slot selected:", time);
+                    setSelectedStartTime(time);
+                  }}
                   className={cn(
                     "min-w-[80px]",
                     selectedStartTime === time 
@@ -172,10 +466,13 @@ const StudentTimetable = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {loadingTimetable ? (
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                      Loading schedule...
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading schedule...
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : timetableData.length === 0 ? (
