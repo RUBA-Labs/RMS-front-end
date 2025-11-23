@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
@@ -47,6 +46,7 @@ type Request = {
 export function Overview() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter States
@@ -92,6 +92,7 @@ export function Overview() {
   // Handle View Click
   const handleView = async (request: Request) => {
     setSelectedRequest(request);
+    setIsDialogOpen(true);
 
     // If it's a new report (not viewed yet), mark it as viewed via API
     if (!request.isViewed) {
@@ -104,6 +105,10 @@ export function Overview() {
             req.id === request.id ? { ...req, isViewed: true } : req
           )
         );
+        
+        // Update the selected request in state so the dialog reflects the new status
+        setSelectedRequest({ ...request, isViewed: true });
+
       } catch (error) {
         console.error("Failed to update view status", error);
       }
@@ -142,7 +147,7 @@ export function Overview() {
 
   // Derived lists based on FILTERS
   const newReports = filteredRequests.filter(req => !req.isViewed);
-  const viewedReports = filteredRequests.filter(req => req.isViewed);
+  const viewedReports = requests.filter(req => req.isViewed); // Keep stats accurate based on total data
 
   if (isLoading) {
     return <div className="p-8 text-center">Loading dashboard...</div>;
@@ -151,7 +156,7 @@ export function Overview() {
   return (
     <div className="p-4">
       
-      {/* Summary Cards (Dynamic based on Filter) */}
+      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -180,19 +185,19 @@ export function Overview() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Visible Reports
+              Total Reports
             </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredRequests.length}</div>
+            <div className="text-2xl font-bold">{requests.length}</div>
           </CardContent>
         </Card>
       </div>
 
 
       {/* Filter Bar */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm border dark:border-gray-800">
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white dark:bg-gray-900 rounded-lg shadow-sm border dark:border-gray-800">
         {/* Search Input */}
         <div className="flex flex-col gap-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Search</label>
@@ -219,21 +224,6 @@ export function Overview() {
             />
         </div>
 
-        {/* Status Filter */}
-        <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Status</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="dark:bg-gray-950 dark:border-gray-700 dark:text-gray-100">
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="PENDING">Pending (New)</SelectItem>
-                <SelectItem value="VIEWED">Viewed (Processed)</SelectItem>
-              </SelectContent>
-            </Select>
-        </div>
-
         {/* Clear Button */}
         <div className="flex items-end">
             <Button variant="outline" onClick={clearFilters} className="w-full dark:bg-gray-950 dark:hover:bg-gray-800">
@@ -242,8 +232,7 @@ export function Overview() {
         </div>
       </div>
 
-
-      {/* New Reports Table */}
+      {/* New Reports Table ONLY */}
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">New Clash Reports</h2>
         {newReports.length === 0 ? (
@@ -266,8 +255,6 @@ export function Overview() {
                         <TableCell>{request.studentId}</TableCell>
                         <TableCell>{request.courseCode}</TableCell>
                         <TableCell>
-                        <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedRequest(null)}>
-                            <DialogTrigger asChild>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -275,40 +262,6 @@ export function Overview() {
                             >
                                 View
                             </Button>
-                            </DialogTrigger>
-                            {selectedRequest && selectedRequest.id === request.id && (
-                            <DialogContent>
-                                <DialogHeader>
-                                <DialogTitle>Request Details</DialogTitle>
-                                </DialogHeader>
-                                <div>
-                                <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                                    <p><strong>Request ID:</strong> {selectedRequest.id}</p>
-                                    <p><strong>Student:</strong> {selectedRequest.studentId}</p>
-                                    <p><strong>Course Code:</strong> {selectedRequest.courseCode}</p>
-                                </div>
-                                
-                                <p className="text-sm mb-2"><strong>Original Slot:</strong> {selectedRequest.originalDay} at {selectedRequest.originalTime}</p>
-                                <p className="text-sm mb-4"><strong>Reason:</strong> {selectedRequest.reason}</p>
-                                
-                                <h4 className="font-semibold text-sm mt-4 mb-2">Proposed Alternative Slots:</h4>
-                                <ul className="list-disc pl-5 text-sm">
-                                    {selectedRequest.requestedSlots.map((slot, index) => (
-                                    <li key={index}>
-                                        {slot.day} at {slot.time}
-                                    </li>
-                                    ))}
-                                </ul>
-                                </div>
-                                
-                                <DialogFooter className="mt-4">
-                                <DialogClose asChild>
-                                    <Button variant="outline">Close</Button>
-                                </DialogClose>
-                                </DialogFooter>
-                            </DialogContent>
-                            )}
-                        </Dialog>
                         </TableCell>
                     </TableRow>
                     ))}
@@ -317,6 +270,48 @@ export function Overview() {
             </div>
         )}
       </div>
+
+      {/* SINGLE GLOBAL DIALOG */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+            <DialogTitle>Request Details</DialogTitle>
+            </DialogHeader>
+            {selectedRequest && (
+                <div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                        <p><strong>Request ID:</strong> {selectedRequest.id}</p>
+                        <p><strong>Student:</strong> {selectedRequest.studentId}</p>
+                        <p><strong>Course Code:</strong> {selectedRequest.courseCode}</p>
+                        <p><strong>Status:</strong> {selectedRequest.isViewed ? "Viewed" : "New"}</p>
+                    </div>
+                    
+                    <p className="text-sm mb-2"><strong>Original Slot:</strong> {selectedRequest.originalDay} at {selectedRequest.originalTime}</p>
+                    <p className="text-sm mb-4"><strong>Reason:</strong> {selectedRequest.reason}</p>
+                    
+                    <h4 className="font-semibold text-sm mt-4 mb-2">Proposed Alternative Slots:</h4>
+                    {selectedRequest.requestedSlots.length > 0 ? (
+                        <ul className="list-disc pl-5 text-sm">
+                            {selectedRequest.requestedSlots.map((slot, index) => (
+                            <li key={index}>
+                                {slot.day} at {slot.time}
+                            </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No alternative slots provided.</p>
+                    )}
+                </div>
+            )}
+            
+            <DialogFooter className="mt-4">
+                <DialogClose asChild>
+                    <Button variant="outline">Close</Button>
+                </DialogClose>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

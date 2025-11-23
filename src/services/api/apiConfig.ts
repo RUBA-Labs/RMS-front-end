@@ -68,6 +68,9 @@ export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/m
 
 //time table management  module in the backend
 export const TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME = `${API_BASE_URL}timetable-management/schedule/by-day-time`;
+export const GET_ALL_LOCATIONS_ROOM_API_URL = `${API_BASE_URL}timetable-management/room`;
+export const UPDATE_TIME_SLOT_BY_ID_API_URL =  (id: number) => `${API_BASE_URL}timetable-management/schedule/${id}`;
+
 
 //Time Conflict Management module in the backend
 export const CREATE_A_NEW_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
