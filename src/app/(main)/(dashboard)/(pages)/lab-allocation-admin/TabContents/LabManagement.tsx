@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Edit, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Edit, Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"; // Ensure this file exists or update the path if necessary
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,6 +45,7 @@ import { cn } from "@/lib/utils";
 
 import { createLab } from "@/services/api/ComputerLabs/create_lab";
 import { updateLab } from "@/services/api/ComputerLabs/update_lab";
+import { deleteLab } from "@/services/api/ComputerLabs/delete_lab";
 import { retrieveAllLabs } from "@/services/api/ComputerLabs/retrieve_all_labs";
 import { createComputer } from "@/services/api/Computers/create_computer";
 import { retrieveComputersFromLab } from "@/services/api/Computers/retrive_computers_from_a_lab";
@@ -61,9 +72,17 @@ interface Lab {
   computersWorking: number;
 }
 
+interface DeleteConfirmation {
+  type: "lab" | "computer" | null;
+  id: string | null;
+  name: string | null;
+}
+
 // --- Main Component ---
 export function LabManagement() {
   const [labs, setLabs] = useState<Lab[]>([]);
+  const [filteredLabs, setFilteredLabs] = useState<Lab[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingComputers, setIsLoadingComputers] = useState(false);
@@ -82,6 +101,14 @@ export function LabManagement() {
 
   const [isSavingLab, setIsSavingLab] = useState(false);
   const [isSavingComputer, setIsSavingComputer] = useState(false);
+  const [isDeletingLab, setIsDeletingLab] = useState(false);
+
+  // --- Delete Confirmation Dialog State ---
+  const [deleteConfirmation, setDeleteConfirmation] = useState<DeleteConfirmation>({
+    type: null,
+    id: null,
+    name: null,
+  });
 
   // --- Fetch all labs on component mount ---
   useEffect(() => {
@@ -108,6 +135,7 @@ export function LabManagement() {
         console.log(`[LabManagement] Successfully loaded ${mappedLabs.length} labs`);
 
         setLabs(mappedLabs);
+        setFilteredLabs(mappedLabs);
         if (mappedLabs.length > 0) {
           setSelectedLab(mappedLabs[0]);
         }
@@ -124,6 +152,27 @@ export function LabManagement() {
     fetchLabs();
   }, []);
 
+  // --- Filter labs by search query ---
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredLabs(labs);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = labs.filter(
+      (lab) =>
+        lab.name.toLowerCase().includes(query) ||
+        lab.location.toLowerCase().includes(query)
+    );
+
+    console.log(
+      `[LabManagement] Filtered labs: ${filtered.length} results for "${searchQuery}"`
+    );
+
+    setFilteredLabs(filtered);
+  }, [searchQuery, labs]);
+
   // --- Load computers when selected lab changes ---
   useEffect(() => {
     const loadComputersForLab = async () => {
@@ -139,9 +188,6 @@ export function LabManagement() {
           `[LabManagement] Loading computers for Lab ID: ${selectedLab.id} (${selectedLab.name})`
         );
 
-        // Call retrieveComputersFromLab with lab ID
-        // Backend endpoint: GET /computers/lab/{labId}
-        // Backend method: ComputersService.findByLabId(labId)
         const computers = await retrieveComputersFromLab(selectedLab.id);
 
         console.log(
@@ -237,7 +283,6 @@ export function LabManagement() {
           payload
         );
 
-        // Call backend PATCH /computer-labs/{id}
         const res = await updateLab(currentLab.id, payload);
 
         console.log("[LabManagement] Lab updated response:", res);
@@ -317,11 +362,47 @@ export function LabManagement() {
     }
   };
 
-  const handleDeleteLab = (labId: string) => {
-    if (window.confirm("Are you sure you want to delete this lab?")) {
-      setLabs((prev) => prev.filter((l) => l.id !== labId));
-      if (selectedLab?.id === labId) setSelectedLab(null);
+  // --- Show delete confirmation dialog for lab ---
+  const handleShowDeleteLabConfirmation = (labId: string, labName: string) => {
+    setDeleteConfirmation({
+      type: "lab",
+      id: labId,
+      name: labName,
+    });
+  };
+
+  // --- Confirm delete lab ---
+  const handleConfirmDeleteLab = async () => {
+    if (!deleteConfirmation.id) return;
+
+    try {
+      setIsDeletingLab(true);
+
+      console.log("[LabManagement] Deleting lab with ID:", deleteConfirmation.id);
+
+      // Call the deleteLab service
+      await deleteLab(deleteConfirmation.id);
+
+      // Remove from local state
+      setLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
+
+      // Also update filtered labs
+      setFilteredLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
+
+      // If deleted lab was selected, clear selection
+      if (selectedLab?.id === deleteConfirmation.id) {
+        setSelectedLab(null);
+      }
+
+      console.log("[LabManagement] Lab deleted successfully");
       window.alert("Lab deleted successfully.");
+    } catch (err: unknown) {
+      const errorMessage = extractErrorMessage(err);
+      console.error("[LabManagement] Delete lab error:", errorMessage);
+      window.alert(`Error deleting lab: ${errorMessage}`);
+    } finally {
+      setIsDeletingLab(false);
+      setDeleteConfirmation({ type: null, id: null, name: null });
     }
   };
 
@@ -415,19 +496,34 @@ export function LabManagement() {
     }
   };
 
-  const handleDeleteComputer = (computerId: string) => {
-    if (window.confirm("Are you sure you want to delete this computer?")) {
-      if (!selectedLab) return;
-      const updatedComputers = selectedLab.computers.filter(
-        (c) => c.computerId !== computerId
-      );
-      const updatedLab = { ...selectedLab, computers: updatedComputers };
-      setLabs((prev) =>
-        prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
-      );
-      setSelectedLab(updatedLab);
-      window.alert("Computer deleted successfully.");
-    }
+  // --- Show delete confirmation dialog for computer ---
+  const handleShowDeleteComputerConfirmation = (computerId: string, computerName: string) => {
+    setDeleteConfirmation({
+      type: "computer",
+      id: computerId,
+      name: computerName,
+    });
+  };
+
+  // --- Confirm delete computer ---
+  const handleConfirmDeleteComputer = () => {
+    if (!deleteConfirmation.id || !selectedLab) return;
+
+    const updatedComputers = selectedLab.computers.filter(
+      (c) => c.computerId !== deleteConfirmation.id
+    );
+    const updatedLab = { ...selectedLab, computers: updatedComputers };
+    setLabs((prev) =>
+      prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
+    );
+    setSelectedLab(updatedLab);
+    window.alert("Computer deleted successfully.");
+    setDeleteConfirmation({ type: null, id: null, name: null });
+  };
+
+  // --- Clear search ---
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
   // --- Helper function to extract error message ---
@@ -469,147 +565,179 @@ export function LabManagement() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel: Manage Labs */}
           <Card className="flex flex-col h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Manage Labs</CardTitle>
-              <Dialog open={isLabDialogOpen} onOpenChange={setIsLabDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => handleOpenLabDialog()}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Lab
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {currentLab?.id ? "Edit Lab" : "Add New Lab"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {currentLab?.id
-                        ? "Update lab details. Changes will be saved to the server."
-                        : "Create a new computer lab."}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="flex flex-col gap-4 py-4">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="lab-name">Lab Name *</Label>
-                      <Input
-                        id="lab-name"
-                        placeholder="e.g., Lab A1"
-                        value={currentLab?.name || ""}
-                        onChange={(e) =>
-                          setCurrentLab((s) =>
-                            s ? { ...s, name: e.target.value } : null
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="location">Location *</Label>
-                      <Input
-                        id="location"
-                        placeholder="e.g., Building A, Floor 2"
-                        value={currentLab?.location || ""}
-                        onChange={(e) =>
-                          setCurrentLab((s) =>
-                            s ? { ...s, location: e.target.value } : null
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="capacity">Capacity *</Label>
-                      <Input
-                        id="capacity"
-                        type="number"
-                        min="1"
-                        placeholder="e.g., 30"
-                        value={currentLab?.capacity ?? 0}
-                        onChange={(e) => {
-                          const cap = Math.max(1, parseInt(e.target.value) || 0);
-                          setCurrentLab((s) =>
-                            s
-                              ? {
-                                ...s,
-                                capacity: cap,
-                                computersWorking: Math.min(
-                                  s.computersWorking ?? 0,
-                                  cap
-                                ),
-                              }
-                              : null
-                          );
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="working">Working Computers</Label>
-                      <Input
-                        id="working"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={currentLab?.computersWorking ?? 0}
-                        onChange={(e) => {
-                          const val = Math.max(0, parseInt(e.target.value) || 0);
-                          setCurrentLab((s) =>
-                            s
-                              ? {
-                                ...s,
-                                computersWorking: Math.min(
-                                  val,
-                                  s.capacity ?? val
-                                ),
-                              }
-                              : null
-                          );
-                        }}
-                      />
-                    </div>
-
-                    <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
-                      <p>
-                        <strong>Disabled computers:</strong>{" "}
-                        {Math.max(
-                          0,
-                          (currentLab?.capacity ?? 0) -
-                          (currentLab?.computersWorking ?? 0)
-                        )}
-                      </p>
-                      <p className="text-xs mt-1">
-                        Formula: Capacity - Working Computers
-                      </p>
-                    </div>
-                  </div>
-
-                  <DialogFooter>
-                    <Button onClick={handleSaveLab} disabled={isSavingLab}>
-                      {isSavingLab
-                        ? "Saving..."
-                        : currentLab?.id
-                          ? "Save Changes"
-                          : "Create Lab"}
+            <CardHeader className="space-y-4">
+              <div className="flex flex-row items-center justify-between">
+                <CardTitle>Manage Labs</CardTitle>
+                <Dialog open={isLabDialogOpen} onOpenChange={setIsLabDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => handleOpenLabDialog()}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Lab
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {currentLab?.id ? "Edit Lab" : "Add New Lab"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {currentLab?.id
+                          ? "Update lab details. Changes will be saved to the server."
+                          : "Create a new computer lab."}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-4 py-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="lab-name">Lab Name *</Label>
+                        <Input
+                          id="lab-name"
+                          placeholder="e.g., Lab A1"
+                          value={currentLab?.name || ""}
+                          onChange={(e) =>
+                            setCurrentLab((s) =>
+                              s ? { ...s, name: e.target.value } : null
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="location">Location *</Label>
+                        <Input
+                          id="location"
+                          placeholder="e.g., Building A, Floor 2"
+                          value={currentLab?.location || ""}
+                          onChange={(e) =>
+                            setCurrentLab((s) =>
+                              s ? { ...s, location: e.target.value } : null
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="capacity">Capacity *</Label>
+                        <Input
+                          id="capacity"
+                          type="number"
+                          min="1"
+                          placeholder="e.g., 30"
+                          value={currentLab?.capacity ?? 0}
+                          onChange={(e) => {
+                            const cap = Math.max(1, parseInt(e.target.value) || 0);
+                            setCurrentLab((s) =>
+                              s
+                                ? {
+                                  ...s,
+                                  capacity: cap,
+                                  computersWorking: Math.min(
+                                    s.computersWorking ?? 0,
+                                    cap
+                                  ),
+                                }
+                                : null
+                            );
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="working">Working Computers</Label>
+                        <Input
+                          id="working"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={currentLab?.computersWorking ?? 0}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setCurrentLab((s) =>
+                              s
+                                ? {
+                                  ...s,
+                                  computersWorking: Math.min(
+                                    val,
+                                    s.capacity ?? val
+                                  ),
+                                }
+                                : null
+                            );
+                          }}
+                        />
+                      </div>
+
+                      <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
+                        <p>
+                          <strong>Disabled computers:</strong>{" "}
+                          {Math.max(
+                            0,
+                            (currentLab?.capacity ?? 0) -
+                            (currentLab?.computersWorking ?? 0)
+                          )}
+                        </p>
+                        <p className="text-xs mt-1">
+                          Formula: Capacity - Working Computers
+                        </p>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button onClick={handleSaveLab} disabled={isSavingLab}>
+                        {isSavingLab
+                          ? "Saving..."
+                          : currentLab?.id
+                            ? "Save Changes"
+                            : "Create Lab"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by lab name or location..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 text-muted-foreground hover:text-foreground"
+                      title="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Found {filteredLabs.length} of {labs.length} labs
+                  </p>
+                )}
+              </div>
             </CardHeader>
+
             <CardContent className="space-y-2 flex-grow overflow-y-auto">
-              {labs.length === 0 ? (
+              {filteredLabs.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  No labs found. Create one to get started.
+                  {searchQuery
+                    ? `No labs found matching "${searchQuery}".`
+                    : "No labs found. Create one to get started."}
                 </p>
               ) : (
-                labs.map((lab) => (
+                filteredLabs.map((lab) => (
                   <div
                     key={lab.id}
                     className={cn(
                       "p-4 border rounded-md cursor-pointer transition-all hover:shadow-md",
                       selectedLab?.id === lab.id
-                        ? "bg-blue-50 border-blue-500 border-2"
-                        : "bg-background hover:bg-muted/50"
+                        ? "bg-primary/10 border-primary border-2"
+                        : "bg-card hover:bg-muted"
                     )}
                     onClick={() => {
                       console.log(
@@ -645,6 +773,7 @@ export function LabManagement() {
                             handleOpenLabDialog(lab);
                           }}
                           title="Edit Lab"
+                          disabled={isDeletingLab}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -653,11 +782,16 @@ export function LabManagement() {
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteLab(lab.id);
+                            handleShowDeleteLabConfirmation(lab.id, lab.name);
                           }}
                           title="Delete Lab"
+                          disabled={isDeletingLab}
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          {isDeletingLab ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -853,7 +987,10 @@ export function LabManagement() {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() =>
-                                        handleDeleteComputer(computer.computerId)
+                                        handleShowDeleteComputerConfirmation(
+                                          computer.computerId,
+                                          computer.name
+                                        )
                                       }
                                       title="Delete Computer"
                                     >
@@ -890,6 +1027,50 @@ export function LabManagement() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog
+        open={deleteConfirmation.type !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmation({ type: null, id: null, name: null });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteConfirmation.type === "lab" ? "Delete Lab?" : "Delete Computer?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirmation.type === "lab"
+                ? `Are you sure you want to delete the lab "${deleteConfirmation.name}"? This action cannot be undone and will permanently remove the lab from the system.`
+                : `Are you sure you want to delete the computer "${deleteConfirmation.name}"? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={
+                deleteConfirmation.type === "lab"
+                  ? handleConfirmDeleteLab
+                  : handleConfirmDeleteComputer
+              }
+              disabled={isDeletingLab}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingLab ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

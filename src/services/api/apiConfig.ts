@@ -47,6 +47,7 @@ export const USER_PROFILE_API_URL_UPDATE_PROFILE = `${API_BASE_URL}user-profile`
 export const CREATE_A_NEW_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
 export const RETRIEVE_ALL_COMPUTER_LABS_API_URL = `${API_BASE_URL}computer-labs`;
 export const UPDATE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
+export const DELETE_A_COMPUTER_LAB_API_URL = `${API_BASE_URL}computer-labs`;
 
 //exam claims module in the backend
 export const EXAM_CLAIMS_API_URL_CREATE_EXAM_CLAIM = `${API_BASE_URL}exam-claims`;
