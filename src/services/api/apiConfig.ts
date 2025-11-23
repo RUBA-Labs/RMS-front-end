@@ -81,3 +81,5 @@ export const VIEW_STATUS_CONFLICT_API_URL_BY_ID = (id: number) => `${API_BASE_UR
 //my course module in the backend
 export const MY_COURSE_API_URL_ADD_MY_COURSE = `${API_BASE_URL}my-course-select`;
 export const GET_AVAILABLE_COURSES_API_URL = `${API_BASE_URL}my-course-select/available-courses`;
+export const GET_MY_COURSES_API_URL = `${API_BASE_URL}my-course-select/my-courses`;
+export const DELETE_MY_COURSE_API_URL = (courseId: number) => `${API_BASE_URL}/my-course-select/${courseId}`;
