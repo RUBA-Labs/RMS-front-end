@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"; // Optional accessibility helper, or we use sr-only
 
 import { getNotifications, Notification } from "@/services/api/Notification/getnotifications";
 import { markNotificationAsRead } from "@/services/api/Notification/notificationRead";

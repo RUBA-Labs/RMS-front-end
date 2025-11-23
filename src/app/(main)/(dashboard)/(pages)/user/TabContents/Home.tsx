@@ -3,7 +3,6 @@ import * as React from "react"
 import Autoplay from "embla-carousel-autoplay"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { LayoutDashboard, CalendarDays, CreditCard, Users, Accessibility, Workflow } from "lucide-react";
 
 
