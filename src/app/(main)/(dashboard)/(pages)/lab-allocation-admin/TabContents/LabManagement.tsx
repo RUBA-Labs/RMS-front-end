@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"; // Ensure this file exists or update the path if necessary
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -87,7 +87,10 @@ export function LabManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingComputers, setIsLoadingComputers] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [computersError, setComputersError] = useState<string | null>(null);
+  
+  // We don't need to show computer errors to the user anymore, 
+  // we will just show the empty state.
+  // const [computersError, setComputersError] = useState<string | null>(null);
 
   const [isLabDialogOpen, setIsLabDialogOpen] = useState(false);
   const [currentLab, setCurrentLab] = useState<
@@ -109,6 +112,23 @@ export function LabManagement() {
     id: null,
     name: null,
   });
+
+  // --- Helper function to extract error message ---
+  const extractErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) {
+      return err.message;
+    } else if (typeof err === "object" && err !== null) {
+      const errorObj = err as Record<string, unknown>;
+      if (errorObj.message) {
+        return String(errorObj.message);
+      }
+      if (errorObj.error) {
+        return String(errorObj.error);
+      }
+      return JSON.stringify(errorObj);
+    }
+    return "Unknown error occurred";
+  };
 
   // --- Fetch all labs on component mount ---
   useEffect(() => {
@@ -140,7 +160,7 @@ export function LabManagement() {
           setSelectedLab(mappedLabs[0]);
         }
       } catch (err: unknown) {
-        const message = (err as Error).message || "Failed to load labs.";
+        const message = extractErrorMessage(err);
         console.error("[LabManagement] Fetch labs error:", message);
         setError(message);
         window.alert(`Error loading labs: ${message}`);
@@ -166,24 +186,21 @@ export function LabManagement() {
         lab.location.toLowerCase().includes(query)
     );
 
-    console.log(
-      `[LabManagement] Filtered labs: ${filtered.length} results for "${searchQuery}"`
-    );
-
     setFilteredLabs(filtered);
   }, [searchQuery, labs]);
 
   // --- Load computers when selected lab changes ---
   useEffect(() => {
     const loadComputersForLab = async () => {
-      if (!selectedLab || (Array.isArray(selectedLab.computers) && selectedLab.computers.length > 0)) {
+      if (!selectedLab) return;
+
+      // If we already have computers loaded (length > 0), stop.
+      if (Array.isArray(selectedLab.computers) && selectedLab.computers.length > 0) {
         return;
       }
 
       try {
         setIsLoadingComputers(true);
-        setComputersError(null);
-
         console.log(
           `[LabManagement] Loading computers for Lab ID: ${selectedLab.id} (${selectedLab.name})`
         );
@@ -199,18 +216,19 @@ export function LabManagement() {
           prev ? { ...prev, computers } : prev
         );
 
-        // Also update the labs state
+        // Also update the labs state to keep it in sync
         setLabs((prev) =>
           prev.map((lab) =>
             lab.id === selectedLab.id ? { ...lab, computers } : lab
           )
         );
       } catch (err: unknown) {
-        const message = (err as Error).message || "Failed to load computers.";
-        console.error("[LabManagement] Fetch computers error:", message);
-        setComputersError(message);
+        // FIX: Instead of setting an error state, we just log it and assume empty list.
+        // This prevents the [object Object] yellow box.
+        const message = extractErrorMessage(err);
+        console.warn("[LabManagement] Failed to fetch computers (treating as empty):", message);
 
-        // Set empty computers array on error
+        // Set empty computers array
         setSelectedLab((prev) =>
           prev ? { ...prev, computers: [] } : prev
         );
@@ -220,7 +238,7 @@ export function LabManagement() {
     };
 
     loadComputersForLab();
-  }, [selectedLab]);
+  }, [selectedLab?.id]); 
 
   // --- Lab Management Handlers ---
   const handleOpenLabDialog = (lab?: Lab) => {
@@ -241,7 +259,6 @@ export function LabManagement() {
   const handleSaveLab = async () => {
     if (!currentLab) return;
 
-    // Validate required fields
     if (!currentLab.name || currentLab.name.trim() === "") {
       window.alert("Lab name is required.");
       return;
@@ -263,7 +280,7 @@ export function LabManagement() {
     );
     const disabled = Math.max(0, (currentLab.capacity ?? 0) - working);
 
-    // --- EDIT EXISTING LAB: Call backend PATCH endpoint ---
+    // --- EDIT EXISTING LAB ---
     if (currentLab.id) {
       try {
         setIsSavingLab(true);
@@ -276,35 +293,21 @@ export function LabManagement() {
           computersDisable: disabled,
         };
 
-        console.log(
-          "[LabManagement] Updating lab:",
-          currentLab.id,
-          "with payload:",
-          payload
-        );
+        await updateLab(currentLab.id, payload);
 
-        const res = await updateLab(currentLab.id, payload);
-
-        console.log("[LabManagement] Lab updated response:", res);
-
-        // Map response to local Lab shape
         const updatedLab: Lab = {
-          id: res.labId || res.id || currentLab.id,
-          name: res.description || currentLab.name,
-          location: res.location || currentLab.location,
-          capacity: res.computersAvailable || currentLab.capacity,
-          computersWorking: res.computersWorking ?? working,
-          computers: Array.isArray(res.computers)
-            ? (res.computers as Computer[])
-            : currentLab.computers || [],
+          id: currentLab.id,
+          name: currentLab.name,
+          location: currentLab.location,
+          capacity: currentLab.capacity,
+          computersWorking: working,
+          computers: currentLab.computers || [],
         };
 
-        // Update state
         setLabs((prev) =>
           prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
         );
 
-        // Update selected lab
         if (selectedLab?.id === updatedLab.id) {
           setSelectedLab(updatedLab);
         }
@@ -312,18 +315,16 @@ export function LabManagement() {
         setIsLabDialogOpen(false);
         setCurrentLab(null);
         window.alert("Lab updated successfully.");
-        return;
       } catch (err: unknown) {
         const errorMessage = extractErrorMessage(err);
-        console.error("[LabManagement] Update lab error:", errorMessage);
         window.alert(`Error updating lab: ${errorMessage}`);
-        return;
       } finally {
         setIsSavingLab(false);
       }
+      return;
     }
 
-    // --- CREATE NEW LAB: Call backend POST endpoint ---
+    // --- CREATE NEW LAB ---
     try {
       setIsSavingLab(true);
 
@@ -334,8 +335,6 @@ export function LabManagement() {
         computersWorking: working,
         computersDisable: disabled,
       };
-
-      console.log("[LabManagement] Creating lab with payload:", payload);
 
       const res = await createLab(payload);
 
@@ -355,14 +354,12 @@ export function LabManagement() {
       window.alert("Lab created successfully.");
     } catch (err: unknown) {
       const errorMessage = extractErrorMessage(err);
-      console.error("[LabManagement] Create lab error:", errorMessage);
       window.alert(`Error creating lab: ${errorMessage}`);
     } finally {
       setIsSavingLab(false);
     }
   };
 
-  // --- Show delete confirmation dialog for lab ---
   const handleShowDeleteLabConfirmation = (labId: string, labName: string) => {
     setDeleteConfirmation({
       type: "lab",
@@ -371,34 +368,23 @@ export function LabManagement() {
     });
   };
 
-  // --- Confirm delete lab ---
   const handleConfirmDeleteLab = async () => {
     if (!deleteConfirmation.id) return;
 
     try {
       setIsDeletingLab(true);
-
-      console.log("[LabManagement] Deleting lab with ID:", deleteConfirmation.id);
-
-      // Call the deleteLab service
       await deleteLab(deleteConfirmation.id);
 
-      // Remove from local state
       setLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
-
-      // Also update filtered labs
       setFilteredLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
 
-      // If deleted lab was selected, clear selection
       if (selectedLab?.id === deleteConfirmation.id) {
         setSelectedLab(null);
       }
 
-      console.log("[LabManagement] Lab deleted successfully");
       window.alert("Lab deleted successfully.");
     } catch (err: unknown) {
       const errorMessage = extractErrorMessage(err);
-      console.error("[LabManagement] Delete lab error:", errorMessage);
       window.alert(`Error deleting lab: ${errorMessage}`);
     } finally {
       setIsDeletingLab(false);
@@ -433,8 +419,8 @@ export function LabManagement() {
       return;
     }
 
-    // If editing existing computer -> update locally only
     if (currentComputer.computerId) {
+      // Edit local state for simplicity in this example
       const updatedComputers = selectedLab.computers.map((c) =>
         c.computerId === currentComputer.computerId
           ? ({ ...c, ...currentComputer } as Computer)
@@ -451,7 +437,6 @@ export function LabManagement() {
       return;
     }
 
-    // Creating new computer -> send to backend
     try {
       setIsSavingComputer(true);
 
@@ -462,11 +447,7 @@ export function LabManagement() {
         description: currentComputer.description || "",
       };
 
-      console.log("[LabManagement] Creating computer with payload:", payload);
-
       const res = await createComputer(payload);
-
-      console.log("[LabManagement] Computer created:", res);
 
       const newComputer: Computer = {
         computerId: res.computerId,
@@ -489,14 +470,12 @@ export function LabManagement() {
       window.alert("Computer added successfully.");
     } catch (err: unknown) {
       const errorMessage = extractErrorMessage(err);
-      console.error("[LabManagement] Create computer error:", errorMessage);
       window.alert(`Error adding computer: ${errorMessage}`);
     } finally {
       setIsSavingComputer(false);
     }
   };
 
-  // --- Show delete confirmation dialog for computer ---
   const handleShowDeleteComputerConfirmation = (computerId: string, computerName: string) => {
     setDeleteConfirmation({
       type: "computer",
@@ -505,7 +484,6 @@ export function LabManagement() {
     });
   };
 
-  // --- Confirm delete computer ---
   const handleConfirmDeleteComputer = () => {
     if (!deleteConfirmation.id || !selectedLab) return;
 
@@ -521,26 +499,8 @@ export function LabManagement() {
     setDeleteConfirmation({ type: null, id: null, name: null });
   };
 
-  // --- Clear search ---
   const handleClearSearch = () => {
     setSearchQuery("");
-  };
-
-  // --- Helper function to extract error message ---
-  const extractErrorMessage = (err: unknown): string => {
-    if (err instanceof Error) {
-      return err.message;
-    } else if (typeof err === "object" && err !== null) {
-      const errorObj = err as Record<string, unknown>;
-      if (errorObj.message) {
-        return String(errorObj.message);
-      }
-      if (errorObj.error) {
-        return String(errorObj.error);
-      }
-      return JSON.stringify(errorObj);
-    }
-    return "Unknown error occurred";
   };
 
   return (
@@ -628,13 +588,13 @@ export function LabManagement() {
                             setCurrentLab((s) =>
                               s
                                 ? {
-                                  ...s,
-                                  capacity: cap,
-                                  computersWorking: Math.min(
-                                    s.computersWorking ?? 0,
-                                    cap
-                                  ),
-                                }
+                                    ...s,
+                                    capacity: cap,
+                                    computersWorking: Math.min(
+                                      s.computersWorking ?? 0,
+                                      cap
+                                    ),
+                                  }
                                 : null
                             );
                           }}
@@ -654,12 +614,12 @@ export function LabManagement() {
                             setCurrentLab((s) =>
                               s
                                 ? {
-                                  ...s,
-                                  computersWorking: Math.min(
-                                    val,
-                                    s.capacity ?? val
-                                  ),
-                                }
+                                    ...s,
+                                    computersWorking: Math.min(
+                                      val,
+                                      s.capacity ?? val
+                                    ),
+                                  }
                                 : null
                             );
                           }}
@@ -739,12 +699,7 @@ export function LabManagement() {
                         ? "bg-primary/10 border-primary border-2"
                         : "bg-card hover:bg-muted"
                     )}
-                    onClick={() => {
-                      console.log(
-                        `[LabManagement] Clicked on lab: ${lab.name} (ID: ${lab.id})`
-                      );
-                      setSelectedLab(lab);
-                    }}
+                    onClick={() => setSelectedLab(lab)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -888,9 +843,9 @@ export function LabManagement() {
                               setCurrentComputer((s) =>
                                 s
                                   ? {
-                                    ...s,
-                                    status: value as ComputerStatus,
-                                  }
+                                      ...s,
+                                      status: value as ComputerStatus,
+                                    }
                                   : null
                               )
                             }
@@ -930,11 +885,6 @@ export function LabManagement() {
                       <span className="ml-2 text-sm">
                         Loading computers for {selectedLab.name}...
                       </span>
-                    </div>
-                  ) : computersError ? (
-                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
-                      <p className="text-sm font-semibold">Notice:</p>
-                      <p className="text-sm">{computersError}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-md border">
@@ -1006,7 +956,7 @@ export function LabManagement() {
                                 colSpan={4}
                                 className="h-24 text-center text-muted-foreground"
                               >
-                                No computers assigned to this lab yet.
+                                Computers not setup yet.
                               </TableCell>
                             </TableRow>
                           )}
