@@ -65,6 +65,11 @@ export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers
 export const CREATE_LAB_SESSION_API_URL = `${API_BASE_URL}lab-sessions`;
 export const RETRIEVE_ALL_LAB_SESSIONS_API_URL = `${API_BASE_URL}lab-sessions`;
 
+//lab booking module in the backend
+export const CREATE_A_LAB_BOOKING_API_URL = `${API_BASE_URL}lab-booking/book`;
+export const RETRIEVE_ALL_LAB_BOOKINGS_API_URL_BY_ID = (labSessionId: string) => `${API_BASE_URL}lab-booking/status/${labSessionId}`;
+
+
 //Announcements
 export const CREATE_ANNOUNCEMENT_API_URL = `${API_BASE_URL}announcements`;
 export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/my-announcements`;

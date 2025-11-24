@@ -5,204 +5,360 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { retrieveComputersFromLab, ComputerDto } from "@/services/api/Computers/retrive_computers_from_a_lab";
 import { Wrench, CircleCheck, CircleX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// --- Mock Data ---
-const availableLabs = [
-    { id: "lab-a1", name: "Computer Lab A1" },
-    { id: "lab-b2", name: "Computer Lab B2" },
-    { id: "lab-c3", name: "Electronics Lab C3" },
-];
+// --- API Imports ---
+// Assuming these file paths are correct in your project structure:
+import { retrieveComputersFromLab, ComputerDto } from "@/services/api/Computers/retrive_computers_from_a_lab";
+import { retrieveAllLabSessions, LabSessionDto } from "@/services/api/LabSessions/retrieve_all_lab_sessions";
+import { retrieveAllLabBookings, LabBookingStatusResponse } from "@/services/api/LabBooking/retrieve_all_lab_bookings";
+import { createLabBooking, LabBookingPayload } from "@/services/api/LabBooking/booking_a_lab_session"; 
 
-const timeSlots = [
-    "08:00 AM - 10:00 AM",
-    "10:00 AM - 12:00 PM",
-    "01:00 PM - 03:00 PM",
-    "03:00 PM - 05:00 PM",
-];
-
-const availableCourseCodes = ["CS101", "EE205", "ME301", "IS402"];
-
-// --- Helper & Sub-Component ---
+// --- Helper ---
 const getComputerNumber = (name: string): number => {
-    const match = name.match(/\d+/);
-    return match ? parseInt(match[0], 10) : 0;
+  const match = name.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
 };
 
-const LabMap = ({ computers, bookedComputerNumbers, onSelectComputer, selectedComputerNumber }: { computers: ComputerDto[]; bookedComputerNumbers: number[]; onSelectComputer: (computer: ComputerDto) => void; selectedComputerNumber: number | null; }) => {
-    const getComputerStatus = (computer: ComputerDto) => {
-        if (computer.status === 'faulty') return "not_working";
-        if (bookedComputerNumbers.includes(getComputerNumber(computer.name))) return "booked";
-        return "available";
-    };
+// --- Sub Component for Computer Map ---
+const LabMap = ({
+  computers,
+  bookedComputerNumbers,
+  onSelectComputer,
+  selectedComputerNumber,
+}: {
+  computers: ComputerDto[];
+  bookedComputerNumbers: number[];
+  onSelectComputer: (computer: ComputerDto) => void;
+  selectedComputerNumber: number | null;
+}) => {
+  const getComputerStatus = (computer: ComputerDto) => {
+    // Check if the computer itself is marked as 'faulty'
+    if (computer.status.toLowerCase() === "faulty") return "not_working"; 
+    // Check if the computer number is in the list of currently booked computers
+    if (bookedComputerNumbers.includes(getComputerNumber(computer.name))) return "booked";
+    // Otherwise, it's available
+    return "available";
+  };
 
-    return (
-        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 p-4 border rounded-md bg-muted/50">
-            {computers.map(computer => {
-                const status = getComputerStatus(computer);
-                const computerNo = getComputerNumber(computer.name);
-                const isSelected = selectedComputerNumber === computerNo;
-                const statusConfig = {
-                    available: { color: "bg-green-500", icon: <CircleCheck className="h-4 w-4" />, tooltip: "Available" },
-                    booked: { color: "bg-red-500", icon: <CircleX className="h-4 w-4" />, tooltip: "Booked" },
-                    not_working: { color: "bg-gray-400", icon: <Wrench className="h-4 w-4" />, tooltip: "Not Working" },
-                };
-                return (
-                    <Button key={computer.computerId} variant="outline" disabled={status !== 'available'} onClick={() => onSelectComputer(computer)}
-                        className={cn("h-12 w-12 flex flex-col items-center justify-center font-bold text-xs text-white p-1 hover:bg-opacity-80", statusConfig[status].color, isSelected && "ring-2 ring-offset-2 ring-blue-500")}
-                        title={`Computer ${computerNo} - ${statusConfig[status].tooltip}`}>
-                        {statusConfig[status].icon}
-                        <span>{computerNo}</span>
-                    </Button>
-                );
-            })}
-        </div>
-    );
+  const statusConfig = {
+    available: { color: "bg-green-500", icon: <CircleCheck className="h-4 w-4" />, tooltip: "Available" },
+    booked: { color: "bg-red-500", icon: <CircleX className="h-4 w-4" />, tooltip: "Booked" },
+    not_working: { color: "bg-gray-400", icon: <Wrench className="h-4 w-4" />, tooltip: "Not Working" },
+  };
+
+  return (
+    <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 p-4 border rounded-md bg-muted/50">
+      {computers.map((computer) => {
+        const status = getComputerStatus(computer);
+        const computerNo = getComputerNumber(computer.name);
+        const isSelected = selectedComputerNumber === computerNo;
+
+        return (
+          <Button
+            key={computer.computerId}
+            variant="outline"
+            // Only enable button for available computers
+            disabled={status !== "available"}
+            onClick={() => onSelectComputer(computer)}
+            className={cn(
+              "h-12 w-12 flex flex-col items-center justify-center font-bold text-xs text-white p-1 hover:bg-opacity-80",
+              statusConfig[status].color,
+              isSelected && "ring-2 ring-offset-2 ring-blue-500"
+            )}
+            title={`Computer ${computerNo} - ${statusConfig[status].tooltip}`}
+          >
+            {statusConfig[status].icon}
+            <span>{computerNo}</span>
+          </Button>
+        );
+      })}
+    </div>
+  );
 };
 
-// --- Main Component ---
+const CURRENT_STUDENT_ID = "00e7033c-3522-4a00-9883-841f48666571"; 
+
 export function LabBooking() {
-    // State for selections
-    const [selectedCourseCode, setSelectedCourseCode] = useState<string | null>(null);
-    const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
-    const [selectedLab, setSelectedLab] = useState<string | null>(null);
+  // Session list (from backend)
+  const [labSessions, setLabSessions] = useState<LabSessionDto[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
-    // State for computers
-    const [computers, setComputers] = useState<ComputerDto[]>([]);
-    const [selectedComputer, setSelectedComputer] = useState<ComputerDto | null>(null);
-    const [computersLoading, setComputersLoading] = useState(false);
-    const [computersError, setComputersError] = useState<string | null>(null);
-    const [bookedComputers, setBookedComputers] = useState<number[]>([]);
+  // Selected session
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const selectedSession = labSessions.find((s) => s.sessionId === selectedSessionId) || null;
 
-    // State for booking
-    const [bookingStatus, setBookingStatus] = useState<"idle" | "success" | "error">("idle");
-    const [bookingError, setBookingError] = useState<string | null>(null);
+  // Computed labId
+  const selectedLabId = selectedSession?.labId ?? null;
 
-    useEffect(() => {
-        if (selectedLab) {
-            const fetchComputers = async () => {
-                setComputersLoading(true);
-                setComputersError(null);
-                setComputers([]);
-                setSelectedComputer(null);
-                try {
-                    const fetchedComputers = await retrieveComputersFromLab(selectedLab);
-                    setComputers(fetchedComputers.sort((a,b) => getComputerNumber(a.name) - getComputerNumber(b.name)));
-                    const computerNumbers = fetchedComputers.map(c => getComputerNumber(c.name));
-                    const shuffled = computerNumbers.sort(() => 0.5 - Math.random());
-                    setBookedComputers(shuffled.slice(0, Math.floor(Math.random() * (computerNumbers.length / 2))));
-                } catch (error: any) {
-                    setComputersError(error.message || "Failed to fetch computers.");
-                } finally {
-                    setComputersLoading(false);
-                }
-            };
-            fetchComputers();
-        }
-    }, [selectedLab]);
+  // Computers
+  const [computers, setComputers] = useState<ComputerDto[]>([]);
+  const [selectedComputer, setSelectedComputer] = useState<ComputerDto | null>(null);
+  const [computersLoading, setComputersLoading] = useState(false);
+  const [computersError, setComputersError] = useState<string | null>(null);
 
-    const handleBooking = () => {
-        if (!selectedCourseCode || !selectedTimeSlot || !selectedLab || !selectedComputer) {
-            setBookingError("Please complete all selections, including choosing a computer.");
-            setBookingStatus("error");
-            return;
-        }
+  // Booked Computers Data (REAL API DATA)
+  const [labBookingStatus, setLabBookingStatus] = useState<LabBookingStatusResponse | null>(null);
 
-        console.log(`Booking request for Computer: ${selectedComputer.name}, Course: ${selectedCourseCode}, Time: ${selectedTimeSlot}`);
-        setBookingStatus("success");
-        setBookedComputers(prev => [...prev, getComputerNumber(selectedComputer!.name)]);
-        setSelectedComputer(null);
-        setTimeout(() => setBookingStatus("idle"), 5000);
+  // Extract booked computer numbers for the map component
+  const bookedComputerNumbers = useMemo(() => {
+    if (!labBookingStatus) return [];
+    return labBookingStatus.bookingDetails
+      .filter(detail => detail.isBooked)
+      .map(detail => getComputerNumber(detail.computerName));
+  }, [labBookingStatus]);
+
+  // Booking status
+  const [bookingStatus, setBookingStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [bookingError, setBookingError] = useState<string | null>(null);
+
+  // Helper to trigger re-fetch of booking status after a successful booking
+  const [bookingRefetchKey, setBookingRefetchKey] = useState(0);
+
+  // Determine if the booking button should be disabled
+  const isBookingDisabled = useMemo(() => {
+    return (
+      !selectedSessionId || // No session selected
+      !selectedComputer || // No computer selected
+      bookingStatus === "submitting" || // Already submitting
+      computersLoading // Computer data is still loading
+    );
+  }, [selectedSessionId, selectedComputer, bookingStatus, computersLoading]);
+
+
+  // 1. Load all lab sessions from backend 
+ 
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setSessionsLoading(true);
+      setSessionsError(null);
+      try {
+        const sessions = await retrieveAllLabSessions();
+        setLabSessions(sessions);
+      } catch (error: any) {
+        setSessionsError(error.message || "Failed to load sessions.");
+      } finally {
+        setSessionsLoading(false);
+      }
     };
-    
-    const handleLabChange = (labId: string) => {
-        setSelectedLab(labId);
-        setSelectedComputer(null); // Reset computer selection when lab changes
+
+    fetchSessions();
+  }, []);
+
+  useEffect(() => {
+    // Fetch Computers for the Lab
+    const fetchComputers = async (labId: string) => {
+      setComputersLoading(true);
+      setComputersError(null);
+      setComputers([]);
+      setSelectedComputer(null);
+      try {
+        const fetchedComputers = await retrieveComputersFromLab(labId);
+        setComputers(
+          fetchedComputers.sort((a, b) => getComputerNumber(a.name) - getComputerNumber(b.name))
+        );
+      } catch (error: any) {
+        setComputersError(error.message || "Failed to fetch computers.");
+      } finally {
+        setComputersLoading(false);
+      }
+    };
+
+    // Fetch Booking Status for the Session
+    const fetchBookingStatus = async (sessionId: string) => {
+      setLabBookingStatus(null);
+      // Reset the map error on fresh fetch, but wait for computersLoading to finish
+      if (!computersLoading) setComputersError(null); 
+      try {
+        const status = await retrieveAllLabBookings(sessionId);
+        setLabBookingStatus(status);
+      } catch (error: any) {
+        setLabBookingStatus(null);
+        // Set this error only if computers have loaded successfully, otherwise let fetchComputers error prevail
+        if (!computersLoading) {
+          setComputersError(error.message || "Failed to fetch current booking status.");
+        }
+      }
+    };
+
+    if (selectedSessionId && selectedLabId) {
+      fetchComputers(selectedLabId);
+      // Trigger booking status fetch whenever the session ID changes OR when a new booking is successfully submitted
+      fetchBookingStatus(selectedSessionId);
+    } else {
+      setComputers([]);
+      setLabBookingStatus(null);
     }
     
-    const isBookingDisabled = !selectedCourseCode || !selectedTimeSlot || !selectedLab || !selectedComputer;
+  }, [selectedLabId, selectedSessionId, bookingRefetchKey]); 
 
-    return (
-        <div className="container mx-auto p-6 space-y-8">
-            <div className="text-left">
-                <h1 className="text-3xl font-bold">Book a Computer</h1>
-                <p className="text-muted-foreground">Select your course, session, and desired lab to see available computers.</p>
-            </div>
+  // --------------------------------------------------------------------
+  // 3. Booking Handler (Corrected logic)
+  // --------------------------------------------------------------------
+  const handleBooking = async () => {
+    // Clear any previous success or error message
+    setBookingStatus("idle");
+    setBookingError(null);
 
-            {/* Horizontal Cards for Selections */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                    <CardHeader><CardTitle className="text-lg">Course Code</CardTitle></CardHeader>
-                    <CardContent>
-                        <Select onValueChange={setSelectedCourseCode} value={selectedCourseCode || undefined}>
-                            <SelectTrigger><SelectValue placeholder="Select a Course" /></SelectTrigger>
-                            <SelectContent>{availableCourseCodes.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle className="text-lg">Lab Session</CardTitle></CardHeader>
-                    <CardContent>
-                        <Select onValueChange={setSelectedTimeSlot} value={selectedTimeSlot || undefined} disabled={!selectedCourseCode}>
-                            <SelectTrigger><SelectValue placeholder="Select a Time Slot" /></SelectTrigger>
-                            <SelectContent>{timeSlots.map((slot) => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle className="text-lg">Lab</CardTitle></CardHeader>
-                    <CardContent>
-                         <Select onValueChange={handleLabChange} value={selectedLab || undefined} disabled={!selectedTimeSlot}>
-                            <SelectTrigger><SelectValue placeholder="Select a Lab" /></SelectTrigger>
-                            <SelectContent>{availableLabs.map((lab) => <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </CardContent>
-                </Card>
-            </div>
+    if (!selectedSession || !selectedComputer) {
+      setBookingError("Please select a session and an available computer.");
+      setBookingStatus("error");
+      return;
+    }
 
-            {/* Computer Map Card */}
-            {selectedLab && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>4. Select a Computer in {availableLabs.find(l => l.id === selectedLab)?.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {computersLoading && <p className="text-center">Loading computers...</p>}
-                        {computersError && <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{computersError}</AlertDescription></Alert>}
-                        {computers.length > 0 && (
-                            <LabMap 
-                                computers={computers}
-                                bookedComputerNumbers={bookedComputers}
-                                onSelectComputer={setSelectedComputer}
-                                selectedComputerNumber={selectedComputer ? getComputerNumber(selectedComputer.name) : null}
-                            />
-                        )}
-                        {!computersLoading && !computersError && computers.length === 0 && <p className="text-center text-muted-foreground">No computers found for this lab.</p>}
-                    </CardContent>
-                </Card>
+    setBookingStatus("submitting");
+
+    // Construct the payload based on the API function definition
+    const payload: LabBookingPayload = {
+      labSessionId: selectedSession.sessionId,
+      computerId: selectedComputer.computerId,
+    };
+
+    try {
+      // Call the API to create the booking
+      await createLabBooking(payload);
+
+      // Success: Update state
+      setBookingStatus("success");
+      
+      // Clear selected computer after booking
+      setSelectedComputer(null); 
+      
+      // Trigger refetch of the booking status to update the map (by changing the key)
+      setBookingRefetchKey(prev => prev + 1);
+
+      // Optional: Clear success message after a few seconds
+      setTimeout(() => setBookingStatus("idle"), 5000);
+
+    } catch (error: any) {
+      // Failure: Update state
+      setBookingStatus("error");
+      setBookingError(error.message || "An unknown error occurred while trying to book the computer.");
+    } 
+    // Note: Removed the unnecessary and faulty 'finally' block.
+  };
+
+  
+  return (
+    // **Change:** Reduced vertical spacing here from mt-8 to mt-4
+    <div className="mt-4"> 
+      <div className="text-left mb-4">
+        <h1 className="text-3xl font-bold">Book a Computer</h1>
+        <p className="text-muted-foreground">Choose a lab session and select an available computer.</p>
+      </div>
+
+      {/* **Change:** New container with space-y-4 for card separation */}
+      <div className="space-y-4"> 
+
+        {/* ------------------- Lab Session Selector ------------------- */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Select Lab Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sessionsLoading && <p>Loading sessions...</p>}
+            {sessionsError && (
+              <Alert variant="destructive">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{sessionsError}</AlertDescription>
+              </Alert>
             )}
-            
-            {/* Booking Button and Status */}
-            <div className="flex flex-col items-center space-y-4">
-                <Button onClick={handleBooking} disabled={isBookingDisabled} size="lg" className="w-full max-w-xs">
-                    Book Selected Computer
-                </Button>
-                
-                {bookingStatus === 'success' && (
-                    <Alert className="max-w-2xl">
-                        <AlertTitle>Booking Request Sent!</AlertTitle>
-                        <AlertDescription>Your request for computer {selectedComputer?.name} has been submitted for approval.</AlertDescription>
-                    </Alert>
-                )}
-                {bookingStatus === 'error' && (
-                    <Alert variant="destructive" className="max-w-2xl">
-                        <AlertTitle>Booking Failed</AlertTitle>
-                        <AlertDescription>{bookingError}</AlertDescription>
-                    </Alert>
-                )}
-            </div>
-        </div>
-    );
+
+            {!sessionsLoading && !sessionsError && (
+              <Select onValueChange={setSelectedSessionId} value={selectedSessionId || undefined}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a Session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {labSessions.map((session) => (
+                    <SelectItem key={session.sessionId} value={session.sessionId}>
+                      {session.sessionName} — {session.sessionDate} {session.sessionTime}
+                      {" — Lab: "} {session.computerLab.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ------------------- Computer Map ------------------- */}
+        {selectedLabId && (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Select a Computer in {selectedSession?.computerLab.description}
+              </CardTitle>
+              {selectedComputer && (
+                <p className="text-sm text-blue-500 font-medium">Selected: **{selectedComputer.name}**</p>
+              )}
+            </CardHeader>
+            <CardContent>
+              {(computersLoading || bookingStatus === "submitting") && <p className="text-center">Loading computer map or submitting booking...</p>}
+              
+              {/* Show any error from computers or booking status fetch */}
+              {computersError && (
+                <Alert variant="destructive">
+                  <AlertTitle>Error Loading Map</AlertTitle>
+                  <AlertDescription>{computersError}</AlertDescription>
+                </Alert>
+              )}
+
+              {computers.length > 0 && (
+                <LabMap
+                  computers={computers}
+                  bookedComputerNumbers={bookedComputerNumbers}
+                  onSelectComputer={setSelectedComputer}
+                  selectedComputerNumber={
+                    selectedComputer ? getComputerNumber(selectedComputer.name) : null
+                  }
+                />
+              )}
+
+              {!computersLoading && !computersError && computers.length === 0 && (
+                <p className="text-center text-muted-foreground">No computers found for this lab.</p>
+              )}
+              
+              {/* Add legend for map */}
+              <div className="flex justify-center space-x-4 mt-4 text-sm text-muted-foreground">
+                <div className="flex items-center"><CircleCheck className="h-4 w-4 text-green-500 mr-2" /> Available</div>
+                <div className="flex items-center"><CircleX className="h-4 w-4 text-red-500 mr-2" /> Booked</div>
+                <div className="flex items-center"><Wrench className="h-4 w-4 text-gray-400 mr-2" /> Not Working</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+      </div> {/* End of space-y-4 container */}
+
+      {/* ------------------- Booking Button ------------------- */}
+      {/* **Change:** Moved this div outside the space-y-4 container to control its top margin specifically */}
+      <div className="flex flex-col items-left space-y-4 mt-4"> 
+        <Button 
+          onClick={handleBooking} 
+          disabled={isBookingDisabled} 
+          size="lg" 
+          className="w-full max-w-xs"
+        >
+          {bookingStatus === "submitting" ? "Submitting..." : "Book Selected Computer"}
+        </Button>
+
+        {bookingStatus === "success" && (
+          <Alert className="max-w-2xl bg-green-50 border-green-200 text-green-700">
+            <AlertTitle>✅ Success!</AlertTitle>
+            <AlertDescription>Your computer ({selectedComputer?.name || 'N/A'}) has been successfully booked! The map will refresh shortly.</AlertDescription>
+          </Alert>
+        )}
+
+        {bookingStatus === "error" && (
+          <Alert variant="destructive" className="max-w-2xl">
+            <AlertTitle>Booking Failed</AlertTitle>
+            <AlertDescription>{bookingError}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </div>
+  );
 }
