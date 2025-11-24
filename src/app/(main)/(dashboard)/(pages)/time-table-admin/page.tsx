@@ -1,20 +1,23 @@
 import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
 //tabs
-import { Home } from "./TabContents/Home";
-import { Inbox } from "./TabContents/Inbox";
+import { Overview } from "./TabContents/Overview";
+import { ClashReports } from "./TabContents/ClashReports";
+import  Timetable  from "./TabContents/AdminTimetable";
 
 
 export default function TimeTableAdmin() {
    const menuItemsTimeTableAdmin = [
-    { title: "Home", url: "#", icon: "Home", content: "Home" },
-    { title: "Inbox", url: "#", icon: "Inbox", content: "Inbox" },
+    { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
+    { title: "Timetable", url: "#", icon: "Calendar", content: "Timetable" },
+    { title: "ClashReports", url: "#", icon: "Inbox", content: "ClashReports" },
   ];
 
   return (
     <DashboardPageProviders menuItems={menuItemsTimeTableAdmin}>
-      <div title="Home"><Home /></div>
-      <div title="Inbox"><Inbox /></div>
+      <div title="Overview"><Overview /></div>
+      <div title="ClashReports"><ClashReports /></div>
+      <div title="Timetable"><Timetable /></div>
 
 
     </DashboardPageProviders>

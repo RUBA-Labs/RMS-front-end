@@ -28,21 +28,17 @@ import { Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+// Import API Service
+import { createConflictRequest, CreateConflictRequestDto } from "@/services/api/TimeConflictManagement/CreateConflictRequest";
 
 type Request = {
   id: string;
-  studentId: string;
+  studentId: string; // Kept for local UI display
   courseCode: string;
-  originalDay: string;
+  originalDate: string;
   originalTime: string;
-  requestedSlots: { day: string; time: string }[];
+  requestedSlots: { date: string; time: string }[];
   status: "Pending" | "Approved" | "Rejected";
   reason: string;
 };
@@ -52,58 +48,40 @@ const initialMockRequests: Request[] = [
     id: "REQ001",
     studentId: "S001",
     courseCode: "CO221",
-    originalDay: "Monday",
-    originalTime: "08:00",
+    originalDate: "2025-12-20",
+    originalTime: "08:00:00",
     requestedSlots: [
-      { day: "Wednesday", time: "10:00" },
-      { day: "Friday", time: "14:00" },
+      { date: "2025-12-22", time: "10:00:00" },
+      { date: "2025-12-24", time: "14:00:00" },
     ],
     status: "Pending",
     reason: "Medical appointment",
-  },
-  {
-    id: "REQ002",
-    studentId: "S001",
-    courseCode: "CO222",
-    originalDay: "Tuesday",
-    originalTime: "10:00",
-    requestedSlots: [{ day: "Thursday", time: "13:00" }],
-    status: "Approved",
-    reason: "Family event",
-  },
-  {
-    id: "REQ003",
-    studentId: "S001",
-    courseCode: "CO223",
-    originalDay: "Friday",
-    originalTime: "13:00",
-    requestedSlots: [{ day: "Monday", time: "15:00" }],
-    status: "Rejected",
-    reason: "Not a valid reason",
-  },
+  }
 ];
 
-type NewRequest = Omit<Request, "id" | "status">;
-
-const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: NewRequest) => void }) => {
-  const [studentId, setStudentId] = useState("");
+const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: Request) => void }) => {
+  // Form States
+  // Note: studentId is typically extracted from the token in the backend, 
+  // but we keep the input here if you want to allow manual entry for admin views or reference.
+  const [studentId, setStudentId] = useState(""); 
   const [courseCode, setCourseCode] = useState("");
   const [originalTime, setOriginalTime] = useState("");
-  const [timeSlots, setTimeSlots] = useState<{ day: string; time: string }[]>([
-    { day: "", time: "" },
+  const [originalDate, setOriginalDate] = useState("");
+  const [timeSlots, setTimeSlots] = useState<{ date: string; time: string }[]>([
+    { date: "", time: "" },
   ]);
-  const [selectedOriginalDay, setSelectedOriginalDay] = useState<string>("");
   const [reason, setReason] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addSlot = () => {
     if (timeSlots.length < 5) {
-      setTimeSlots([...timeSlots, { day: "", time: "" }]);
+      setTimeSlots([...timeSlots, { date: "", time: "" }]);
     }
   };
 
   const handleSlotChange = (
     index: number,
-    field: "day" | "time",
+    field: "date" | "time",
     value: string
   ) => {
     const newSlots = [...timeSlots];
@@ -116,35 +94,67 @@ const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: NewRe
     setTimeSlots(newSlots);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const newRequest: NewRequest = {
-      studentId,
-      courseCode,
-      originalDay: selectedOriginalDay,
-      originalTime,
-      requestedSlots: timeSlots.filter(slot => slot.day && slot.time),
-      reason,
-    };
-    onNewRequest(newRequest);
-    // Reset form
-    setStudentId("");
-    setCourseCode("");
-    setOriginalTime("");
-    setSelectedOriginalDay("");
-    setTimeSlots([{ day: "", time: "" }]);
-    setReason("");
-  };
+    
+    if (!courseCode || !originalDate || !originalTime || !reason) {
+      alert("Please fill in all required fields.");
+      return;
+    }
 
-  const weekDaysOptions = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data strictly for the Backend API
+      // Ensure time formats are HH:MM:SS (Input type="time" returns HH:MM)
+      const formattedOriginalTime = originalTime.length === 5 ? `${originalTime}:00` : originalTime;
+      
+      const apiPayload: CreateConflictRequestDto = {
+        course_code: courseCode,
+        original_date: originalDate,
+        original_time: formattedOriginalTime,
+        reason_description: reason,
+        available_slots: timeSlots
+          .filter(slot => slot.date && slot.time)
+          .map(slot => ({
+            date: slot.date,
+            time: slot.time.length === 5 ? `${slot.time}:00` : slot.time
+          }))
+      };
+
+      // 1. Call the API
+      await createConflictRequest(apiPayload);
+
+      // 2. Create a local object to update the UI immediately (Optimistic Update)
+      const newRequestForUI: Request = {
+        id: "TEMP_ID", // This would ideally come from the backend response
+        studentId, // Using the input value for display
+        courseCode,
+        originalDate,
+        originalTime: formattedOriginalTime,
+        requestedSlots: apiPayload.available_slots,
+        status: "Pending",
+        reason
+      };
+
+      onNewRequest(newRequestForUI);
+      alert("Conflict request submitted successfully!");
+
+      // Reset form
+      setStudentId("");
+      setCourseCode("");
+      setOriginalTime("");
+      setOriginalDate("");
+      setTimeSlots([{ date: "", time: "" }]);
+      setReason("");
+
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "Failed to submit request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div>
@@ -159,57 +169,61 @@ const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: NewRe
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="studentId">Student ID</Label>
-              <Input id="studentId" placeholder="Enter your student ID" value={studentId} onChange={e => setStudentId(e.target.value)} />
+              <Input 
+                id="studentId" 
+                placeholder="Enter your student ID" 
+                value={studentId} 
+                onChange={e => setStudentId(e.target.value)} 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="courseCode">Course Code</Label>
-              <Input id="courseCode" placeholder="Enter the course code" value={courseCode} onChange={e => setCourseCode(e.target.value)} />
+              <Input 
+                id="courseCode" 
+                placeholder="Enter the course code" 
+                value={courseCode} 
+                onChange={e => setCourseCode(e.target.value)} 
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="originalDate">Original Day</Label>
-              <Select onValueChange={setSelectedOriginalDay} value={selectedOriginalDay}>
-                <SelectTrigger id="originalDate">
-                  <SelectValue placeholder="Select a day" />
-                </SelectTrigger>
-                <SelectContent>
-                  {weekDaysOptions.map((day) => (
-                    <SelectItem key={day} value={day}>
-                      {day}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="originalDate">Original Date</Label>
+              <Input 
+                id="originalDate" 
+                type="date" 
+                value={originalDate} 
+                onChange={e => setOriginalDate(e.target.value)} 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="time">Original Time</Label>
-              <Input id="time" type="time" value={originalTime} onChange={e => setOriginalTime(e.target.value)} />
+              <Input 
+                id="time" 
+                type="time" 
+                value={originalTime} 
+                onChange={e => setOriginalTime(e.target.value)} 
+              />
             </div>
           </div>
+          
           <div className="space-y-2">
-            <Label>Available Time Slots</Label>
+            <Label>Available Alternative Slots</Label>
             {timeSlots.map((slot, index) => (
               <div key={index} className="flex items-center space-x-2">
-                <Select
-                  onValueChange={(value) => handleSlotChange(index, "day", value)}
-                  value={slot.day}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a day" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {weekDaysOptions.map((day) => (
-                      <SelectItem key={day} value={day}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  type="date"
+                  value={slot.date}
+                  onChange={(e) =>
+                    handleSlotChange(index, "date", e.target.value)
+                  }
+                  className="w-1/2"
+                />
                 <Input
                   type="time"
                   value={slot.time}
                   onChange={(e) =>
                     handleSlotChange(index, "time", e.target.value)
                   }
+                  className="w-1/2"
                 />
                 {timeSlots.length > 1 && (
                   <Button
@@ -236,6 +250,7 @@ const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: NewRe
               </Button>
             )}
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="reason">Reason</Label>
             <Textarea
@@ -245,8 +260,10 @@ const TimeChangeRequestForm = ({ onNewRequest }: { onNewRequest: (request: NewRe
               onChange={(e) => setReason(e.target.value)}
             />
           </div>
-           <CardFooter>
-            <Button type="submit">Submit Request</Button>
+           <CardFooter className="px-0">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Submit Request"}
+            </Button>
           </CardFooter>
         </form>
       </CardContent>
@@ -259,11 +276,12 @@ const TimeTableClash = () => {
   const [requests, setRequests] = useState<Request[]>(initialMockRequests);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
 
-  const handleNewRequest = (newRequest: NewRequest) => {
+  const handleNewRequest = (newRequest: Request) => {
+    // Generate a temporary ID for display until data is refetched from server
     const newId = `REQ${String(requests.length + 1).padStart(3, '0')}`;
     setRequests(prevRequests => [
+      { ...newRequest, id: newId },
       ...prevRequests,
-      { ...newRequest, id: newId, status: "Pending" },
     ]);
   };
 
@@ -287,7 +305,7 @@ const TimeTableClash = () => {
               <TableCell>{request.id}</TableCell>
               <TableCell>{request.courseCode}</TableCell>
               <TableCell>
-                {request.originalDay}, {request.originalTime}
+                {request.originalDate}, {request.originalTime}
               </TableCell>
               <TableCell>
                 <Badge
@@ -321,14 +339,14 @@ const TimeTableClash = () => {
                         <p><strong>Request ID:</strong> {selectedRequest.id}</p>
                         <p><strong>Student ID:</strong> {selectedRequest.studentId}</p>
                         <p><strong>Course Code:</strong> {selectedRequest.courseCode}</p>
-                        <p><strong>Original Slot:</strong> {selectedRequest.originalDay}, {selectedRequest.originalTime}</p>
+                        <p><strong>Original Slot:</strong> {selectedRequest.originalDate}, {selectedRequest.originalTime}</p>
                         <p><strong>Status:</strong> {selectedRequest.status}</p>
                         <p><strong>Reason:</strong> {selectedRequest.reason}</p>
                         <h4 className="font-semibold mt-4">Requested Slots:</h4>
                         <ul>
                           {selectedRequest.requestedSlots.map((slot, index) => (
                             <li key={index}>
-                              {slot.day}, {slot.time}
+                              {slot.date}, {slot.time}
                             </li>
                           ))}
                         </ul>

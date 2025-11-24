@@ -1,61 +1,131 @@
 'use client';
 
-// components/ui/overview.tsx
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { retrieveAllLabs, LabDto } from "@/services/api/ComputerLabs/retrieve_all_labs";
+import { retrieveAllLabSessions, LabSessionDto } from "@/services/api/LabSessions/retrieve_all_lab_sessions";
+import { format } from "date-fns";
 
+type Lab = LabDto;
 
 interface LabStatus {
+  id: string;
   name: string;
-  status: 'available' | 'occupied' | 'maintenance';
-  computers: number;
-  inUse: number;
+  status: 'available' | 'occupied';
+  capacity: number;
+  computersWorking: number;
 }
 
-const labData: LabStatus[] = [
-  { name: "Lab A1", status: "available", computers: 30, inUse: 5 },
-  { name: "Lab B2", status: "occupied", computers: 25, inUse: 25 },
-  { name: "Lab C3", status: "maintenance", computers: 20, inUse: 0 },
-  { name: "Lab D4", status: "available", computers: 35, inUse: 12 },
-];
-
 export function Overview() {
-  const getStatusBadge = (status: LabStatus['status']) => {
-    switch (status) {
-      case 'available':
-        return <Badge variant="secondary" className="bg-green-500 text-white hover:bg-green-500">Available</Badge>;
-      case 'occupied':
-        return <Badge variant="secondary" className="bg-red-500 text-white hover:bg-red-500">Occupied</Badge>;
-      case 'maintenance':
-        return <Badge variant="secondary" className="bg-yellow-500 text-white hover:bg-yellow-500">In Maintenance</Badge>;
-      default:
-        return <Badge variant="secondary">Unknown</Badge>;
-    }
-  };
+  const [labs, setLabs] = useState<Lab[]>([]);
+  const [sessions, setSessions] = useState<LabSessionDto[]>([]);
+  const [loadingLabs, setLoadingLabs] = useState(true);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchLabs = async () => {
+      try {
+        const labsResp = await retrieveAllLabs();
+        setLabs(labsResp);
+      } catch {
+        setError("Failed to load labs.");
+      } finally {
+        setLoadingLabs(false);
+      }
+    };
+    fetchLabs();
+  }, []);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        const sessionsResp = await retrieveAllLabSessions();
+        setSessions(sessionsResp);
+      } catch {
+        setError("Failed to load sessions.");
+      } finally {
+        setLoadingSessions(false);
+      }
+    };
+    fetchSessions();
+  }, []);
+
+  const labStatusList: LabStatus[] = labs.map(lab => {
+    const working = lab.computersWorking ?? 0;
+    const capacity = lab.capacity ?? 0;
+    const status: LabStatus['status'] = working >= capacity ? "occupied" : "available";
+
+    return {
+      id: lab.id,
+      name: lab.name,
+      status,
+      capacity,
+      computersWorking: working,
+    };
+  });
+
+  // Summary from sessions - total and today's
+  const today = new Date();
+  const todayString = format(today, "yyyy-MM-dd");
+  const totalSessions = sessions.length;
+  const todaysSessions = sessions.filter(s => s.sessionDate === todayString).length;
+
+  if (error) {
+    return <div className="p-6 text-destructive">{error}</div>;
+  }
+
+  if (loadingLabs || loadingSessions) {
+    return <div className="p-6">Loading data...</div>;
+  }
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Computer Lab Overview</h1>
+    <div className="p-6 space-y-6">
+
+      <h2 className="text-xl font-semibold">Computer Lab Overview</h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {labData.map((lab, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {lab.name}
-              </CardTitle>
-              {getStatusBadge(lab.status)}
+        {labStatusList.map(lab => (
+          <Card key={lab.id}>
+            <CardHeader className="flex justify-between items-center pb-2">
+              <CardTitle className="text-sm font-medium">{lab.name}</CardTitle>
+              <Badge
+                variant={lab.status === "available" ? "secondary" : "destructive"}
+                className={lab.status === "available" ? "bg-green-500 text-white" : "bg-red-500 text-white"}
+              >
+                {lab.status.charAt(0).toUpperCase() + lab.status.slice(1)}
+              </Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {lab.inUse} / {lab.computers}
+              <div className="text-lg font-bold">
+                {lab.computersWorking} / {lab.capacity}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {lab.computers - lab.inUse} computers available
-              </p>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <h2 className="text-xl font-semibold">Session Scheduling Overview</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Scheduled Sessions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalSessions}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sessions Scheduled Today</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{todaysSessions}</div>
+          </CardContent>
+        </Card>
+      </div>
+
     </div>
   );
 }
