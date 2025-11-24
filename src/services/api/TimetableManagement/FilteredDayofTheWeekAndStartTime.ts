@@ -6,6 +6,7 @@ import { TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME } from '@/se
  * Interface representing a single schedule item from the filtered timetable response.
  */
 export interface FilteredScheduleItem {
+  s_id: number; // Strictly mapping 's_id' from backend
   s_course_code: string;
   s_start_time: string;
   s_end_time: string;
@@ -24,7 +25,6 @@ export const getFilteredTimetable = async (day: string, time: string): Promise<F
   console.log(`Fetching timetable for Day: ${day}, Time: ${time}`);
 
   try {
-    // 1. Strict Authentication Guard
     const authData = getAuthData();
     const accessToken = authData?.accessToken;
 
@@ -33,7 +33,6 @@ export const getFilteredTimetable = async (day: string, time: string): Promise<F
       throw new Error('No authentication token found. Please log in again.');
     }
 
-    // 2. Axios Request
     const response = await axios.get(
       TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME,
       {
@@ -48,35 +47,35 @@ export const getFilteredTimetable = async (day: string, time: string): Promise<F
       }
     );
 
-    // 3. Data Transformation (Optional)
-    const schedule: FilteredScheduleItem[] = response.data;
+    // Strictly map s_id from the response item
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const schedule: FilteredScheduleItem[] = response.data.map((item: any) => ({
+        s_id: item.s_id, // Direct mapping of the original ID
+        s_course_code: item.s_course_code,
+        s_start_time: item.s_start_time,
+        s_end_time: item.s_end_time,
+        r_location_code: item.r_location_code,
+        r_room_name: item.r_room_name,
+    }));
     
     console.log(`Successfully fetched ${schedule.length} schedule items.`);
     return schedule;
 
   } catch (error: unknown) {
-    // 4. Standardized Error Handling
     if (axios.isAxiosError(error)) {
-      // Auto-Logout on 401 Unauthorized
       if (error.response?.status === 401) {
         removeAuthData();
         console.error('Session expired or unauthorized. Clearing local data.');
       }
 
-      // Robust Error Parsing
       let errorMessage = 'Failed to fetch filtered timetable.';
       const responseData = error.response?.data;
       
       if (responseData) {
-        if (typeof responseData === 'string') {
-             errorMessage = responseData;
-        } else if (typeof responseData.message === 'string') {
-             errorMessage = responseData.message;
-        } else if (Array.isArray(responseData.message)) {
-             errorMessage = responseData.message.join(', ');
-        } else {
-             errorMessage = JSON.stringify(responseData);
-        }
+        if (typeof responseData === 'string') errorMessage = responseData;
+        else if (typeof responseData.message === 'string') errorMessage = responseData.message;
+        else if (Array.isArray(responseData.message)) errorMessage = responseData.message.join(', ');
+        else errorMessage = JSON.stringify(responseData);
       }
 
       console.error('API request failed details:', {

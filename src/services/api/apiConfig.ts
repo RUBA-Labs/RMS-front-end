@@ -36,7 +36,7 @@ export const NOTIFICATION_API_URL_GET_NOTIFICATIONS = `${API_BASE_URL}notificati
 export const NOTIFICATION_API_URL_MARK_AS_READ = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/read`;
 export const NOTIFICATION_API_URL_MARK_AS_UNREAD = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}/unread`;
 export const NOTIFICATION_API_URL_GET_FULL_NOTIFICATION_BY_ID = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}`;
-
+export const NOTIFICATION_API_URL_DELETE_NOTIFICATION_BY_ID = (notificationId: string) => `${API_BASE_URL}notification/${notificationId}`;
 
 //user profile module in the backend
 export const USER_PROFILE_API_URL_GET_USER_DATA = `${API_BASE_URL}user-profile`;
@@ -76,12 +76,21 @@ export const RETRIEVE_MY_ANNOUNCEMENTS_API_URL = `${API_BASE_URL}announcements/m
 
 //time table management  module in the backend
 export const TIME_TABLE_API_URL_FILTERED_DAY_OF_THE_WEEK_AND_START_TIME = `${API_BASE_URL}timetable-management/schedule/by-day-time`;
+export const GET_ALL_LOCATIONS_ROOM_API_URL = `${API_BASE_URL}timetable-management/room`;
+export const UPDATE_TIME_SLOT_BY_ID_API_URL =  (id: number) => `${API_BASE_URL}timetable-management/schedule/${id}`;
+
 
 //Time Conflict Management module in the backend
 export const CREATE_A_NEW_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
 export const RETRIEVE_ALL_CONFLICTS_API_URL = `${API_BASE_URL}time-conflict-management`;
 export const VIEW_STATUS_CONFLICT_API_URL_BY_ID = (id: number) => `${API_BASE_URL}time-conflict-management/${id}/view-status`;
 
+
+//my course module in the backend
+export const MY_COURSE_API_URL_ADD_MY_COURSE = `${API_BASE_URL}my-course-select`;
+export const GET_AVAILABLE_COURSES_API_URL = `${API_BASE_URL}my-course-select/available-courses`;
+export const GET_MY_COURSES_API_URL = `${API_BASE_URL}my-course-select/my-courses`;
+export const DELETE_MY_COURSE_API_URL = (courseId: number) => `${API_BASE_URL}/my-course-select/${courseId}`;
 //developer module in the backend
 export const DEVELOPER_API_URL_GET_TABLE_DATA = (tableName: string) => `${API_BASE_URL}developer/database/${tableName}`;
 
