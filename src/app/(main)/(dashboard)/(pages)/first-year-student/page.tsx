@@ -14,7 +14,7 @@ export default function Student() {
         { title: "Timetable", url: "#", icon: "Calendar", content: "Timetable" },
         { title: "TimeTableClash", url: "#", icon: "NewClaim", content: "TimeTableClash" },
         { title: "Lab Reservation", url: "#", icon: "LabBooking", content: "Lab Booking" },
-        { title: "Resources", url: "#", icon: "Boxes", content: "Resources" },
+        //{ title: "Resources", url: "#", icon: "Boxes", content: "Resources" },
         
     ];
 

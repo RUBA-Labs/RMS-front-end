@@ -9,7 +9,8 @@ import {
   BsEnvelope, 
   BsBriefcase, 
   BsChatSquareText,
-  BsCardHeading 
+  BsCardHeading,
+  BsTrash // Added Trash icon
 } from "react-icons/bs";
 import { CgSpinner } from "react-icons/cg";
 
@@ -29,12 +30,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden"; // Optional accessibility helper, or we use sr-only
 
 import { getNotifications, Notification } from "@/services/api/Notification/getnotifications";
 import { markNotificationAsRead } from "@/services/api/Notification/notificationRead";
 import { markNotificationAsUnread } from "@/services/api/Notification/notificationUnread";
 import { getFullNotificationById, FullNotification } from "@/services/api/Notification/fullNotificationById";
+// Import the delete service
+import { deleteNotification } from "@/services/api/Notification/DeleteNotification";
 
 export function DropdownNotification() {
   const [notifications, setNotifications] = React.useState<Notification[]>([]);
@@ -44,6 +46,9 @@ export function DropdownNotification() {
   const [selectedNotification, setSelectedNotification] = React.useState<FullNotification | null>(null);
   const [isModalLoading, setIsModalLoading] = React.useState<boolean>(false);
   const [togglingId, setTogglingId] = React.useState<string | null>(null);
+  
+  // Loading state for deletion
+  const [isDeleting, setIsDeleting] = React.useState<boolean>(false);
 
   // --- 1. Polling Logic ---
   React.useEffect(() => {
@@ -136,6 +141,33 @@ export function DropdownNotification() {
       console.error("Failed to toggle status:", error);
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  // --- New Delete Logic ---
+  const handleDeleteNotification = async () => {
+    if (!selectedNotification) return;
+
+    // Optional: Add a confirm dialog here if desired
+    if (!window.confirm("Are you sure you want to delete this notification?")) {
+        return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteNotification(selectedNotification.id);
+      
+      // Update local list by removing the deleted notification
+      setNotifications(prev => prev.filter(n => n.id !== selectedNotification.id));
+      
+      // Close the dialog
+      setIsDialogOpen(false);
+      setSelectedNotification(null);
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+      alert("Failed to delete notification. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -264,8 +296,8 @@ export function DropdownNotification() {
                 {/* 1. SUBJECT / HEADLINE SECTION */}
                 <div className="bg-muted/40 rounded-lg border overflow-hidden">
                   <div className="px-4 py-2 bg-muted/60 border-b text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                     <BsCardHeading className="w-3 h-3" />
-                     Subject
+                      <BsCardHeading className="w-3 h-3" />
+                      Subject
                   </div>
                   <div className="p-4 text-base font-semibold text-foreground leading-snug">
                     {selectedNotification.message}
@@ -275,8 +307,8 @@ export function DropdownNotification() {
                 {/* 2. MESSAGE BODY SECTION */}
                 <div className="bg-muted/40 rounded-lg border overflow-hidden">
                   <div className="px-4 py-2 bg-muted/60 border-b text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                     <BsChatSquareText className="w-3 h-3" />
-                     Message
+                      <BsChatSquareText className="w-3 h-3" />
+                      Message
                   </div>
                   <div className="p-4 text-sm text-foreground leading-relaxed">
                     {modalMessage}
@@ -286,10 +318,10 @@ export function DropdownNotification() {
                 {/* 3. SENDER DETAILS SECTION */}
                 {senderInfo && (
                   <div className="bg-muted/40 rounded-lg border overflow-hidden">
-                     <div className="px-4 py-2 bg-muted/60 border-b text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <div className="px-4 py-2 bg-muted/60 border-b text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Sender Details
-                     </div>
-                     <div className="p-4 space-y-3">
+                      </div>
+                      <div className="p-4 space-y-3">
                         {senderInfo.name ? (
                           <>
                             <div className="flex items-start gap-3 text-sm">
@@ -321,20 +353,34 @@ export function DropdownNotification() {
                             {senderInfo.raw}
                           </div>
                         )}
-                     </div>
+                      </div>
                   </div>
                 )}
 
                 <DialogFooter className="sm:justify-between items-center border-t pt-4 mt-2">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                    System Notification
-                  </span>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(selectedNotification.createdAt).toLocaleString("en-US", {
-                      timeZone: "Asia/Colombo",
-                      weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-                    })}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+                        System Notification
+                    </span>
+                    <div className="text-xs text-muted-foreground">
+                        {new Date(selectedNotification.createdAt).toLocaleString("en-US", {
+                        timeZone: "Asia/Colombo",
+                        weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+                        })}
+                    </div>
                   </div>
+                  
+                  {/* Delete Button */}
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={handleDeleteNotification}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? <CgSpinner className="animate-spin" /> : <BsTrash className="w-4 h-4" />}
+                    Delete
+                  </Button>
                 </DialogFooter>
               </div>
             )

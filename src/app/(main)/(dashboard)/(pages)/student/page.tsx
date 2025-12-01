@@ -13,7 +13,7 @@ export default function Student() {
         { title: "Home", url: "#", icon: "Home", content: "Home" },
         { title: "Timetable", url: "#", icon: "Calendar", content: "Timetable" },
         { title: "TimeTableClash", url: "#", icon: "NewClaim", content: "TimeTableClash" },
-        { title: "Resources", url: "#", icon: "Boxes", content: "Resources" }
+        //{ title: "Resources", url: "#", icon: "Boxes", content: "Resources" }
     ];
 
     return (

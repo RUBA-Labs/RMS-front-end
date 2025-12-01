@@ -1,20 +1,23 @@
 import { DashboardPageProviders } from "../../providers/DashboardPageProviders"
 
 //tabs
-import { Home } from "./TabContents/Home";
-import { Inbox } from "./TabContents/Inbox";
+import { Overview } from "./TabContents/Overview";
+import { DatabaseTest } from "./TabContents/DatabaseTest";
+import { Sessions } from "./TabContents/Sessions";
 
 
 export default function Developer() {
    const menuItemsDeveloper = [
-    { title: "Home", url: "#", icon: "Home", content: "Home" },
-    { title: "Inbox", url: "#", icon: "Inbox", content: "Inbox" },
+    { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
+    //{ title: "Database Test", url: "#", icon: "NewClaim", content: "Database Test" },
+    //{ title: "Sessions", url: "#", icon: "Scheduling", content: "Sessions" },
   ];
 
   return (
     <DashboardPageProviders menuItems={menuItemsDeveloper}>
-      <div title="Home"><Home /></div>
-      <div title="Inbox"><Inbox /></div>
+      <div title="Overview"><Overview /></div>
+      <div title="Database Test"><DatabaseTest /></div>
+      <div title="Sessions"><Sessions /></div>
 
 
     </DashboardPageProviders>

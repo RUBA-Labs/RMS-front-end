@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlusCircle, Trash2, Edit, Loader2 } from "lucide-react";
+import { PlusCircle, Trash2, Edit, Loader2, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -35,6 +45,7 @@ import { cn } from "@/lib/utils";
 
 import { createLab } from "@/services/api/ComputerLabs/create_lab";
 import { updateLab } from "@/services/api/ComputerLabs/update_lab";
+import { deleteLab } from "@/services/api/ComputerLabs/delete_lab";
 import { retrieveAllLabs } from "@/services/api/ComputerLabs/retrieve_all_labs";
 import { createComputer } from "@/services/api/Computers/create_computer";
 import { retrieveComputersFromLab } from "@/services/api/Computers/retrive_computers_from_a_lab";
@@ -61,14 +72,25 @@ interface Lab {
   computersWorking: number;
 }
 
+interface DeleteConfirmation {
+  type: "lab" | "computer" | null;
+  id: string | null;
+  name: string | null;
+}
+
 // --- Main Component ---
 export function LabManagement() {
   const [labs, setLabs] = useState<Lab[]>([]);
+  const [filteredLabs, setFilteredLabs] = useState<Lab[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingComputers, setIsLoadingComputers] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [computersError, setComputersError] = useState<string | null>(null);
+  
+  // We don't need to show computer errors to the user anymore, 
+  // we will just show the empty state.
+  // const [computersError, setComputersError] = useState<string | null>(null);
 
   const [isLabDialogOpen, setIsLabDialogOpen] = useState(false);
   const [currentLab, setCurrentLab] = useState<
@@ -82,6 +104,31 @@ export function LabManagement() {
 
   const [isSavingLab, setIsSavingLab] = useState(false);
   const [isSavingComputer, setIsSavingComputer] = useState(false);
+  const [isDeletingLab, setIsDeletingLab] = useState(false);
+
+  // --- Delete Confirmation Dialog State ---
+  const [deleteConfirmation, setDeleteConfirmation] = useState<DeleteConfirmation>({
+    type: null,
+    id: null,
+    name: null,
+  });
+
+  // --- Helper function to extract error message ---
+  const extractErrorMessage = (err: unknown): string => {
+    if (err instanceof Error) {
+      return err.message;
+    } else if (typeof err === "object" && err !== null) {
+      const errorObj = err as Record<string, unknown>;
+      if (errorObj.message) {
+        return String(errorObj.message);
+      }
+      if (errorObj.error) {
+        return String(errorObj.error);
+      }
+      return JSON.stringify(errorObj);
+    }
+    return "Unknown error occurred";
+  };
 
   // --- Fetch all labs on component mount ---
   useEffect(() => {
@@ -108,11 +155,12 @@ export function LabManagement() {
         console.log(`[LabManagement] Successfully loaded ${mappedLabs.length} labs`);
 
         setLabs(mappedLabs);
+        setFilteredLabs(mappedLabs);
         if (mappedLabs.length > 0) {
           setSelectedLab(mappedLabs[0]);
         }
       } catch (err: unknown) {
-        const message = (err as Error).message || "Failed to load labs.";
+        const message = extractErrorMessage(err);
         console.error("[LabManagement] Fetch labs error:", message);
         setError(message);
         window.alert(`Error loading labs: ${message}`);
@@ -124,24 +172,39 @@ export function LabManagement() {
     fetchLabs();
   }, []);
 
+  // --- Filter labs by search query ---
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredLabs(labs);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = labs.filter(
+      (lab) =>
+        lab.name.toLowerCase().includes(query) ||
+        lab.location.toLowerCase().includes(query)
+    );
+
+    setFilteredLabs(filtered);
+  }, [searchQuery, labs]);
+
   // --- Load computers when selected lab changes ---
   useEffect(() => {
     const loadComputersForLab = async () => {
-      if (!selectedLab || (Array.isArray(selectedLab.computers) && selectedLab.computers.length > 0)) {
+      if (!selectedLab) return;
+
+      // If we already have computers loaded (length > 0), stop.
+      if (Array.isArray(selectedLab.computers) && selectedLab.computers.length > 0) {
         return;
       }
 
       try {
         setIsLoadingComputers(true);
-        setComputersError(null);
-
         console.log(
           `[LabManagement] Loading computers for Lab ID: ${selectedLab.id} (${selectedLab.name})`
         );
 
-        // Call retrieveComputersFromLab with lab ID
-        // Backend endpoint: GET /computers/lab/{labId}
-        // Backend method: ComputersService.findByLabId(labId)
         const computers = await retrieveComputersFromLab(selectedLab.id);
 
         console.log(
@@ -153,18 +216,19 @@ export function LabManagement() {
           prev ? { ...prev, computers } : prev
         );
 
-        // Also update the labs state
+        // Also update the labs state to keep it in sync
         setLabs((prev) =>
           prev.map((lab) =>
             lab.id === selectedLab.id ? { ...lab, computers } : lab
           )
         );
       } catch (err: unknown) {
-        const message = (err as Error).message || "Failed to load computers.";
-        console.error("[LabManagement] Fetch computers error:", message);
-        setComputersError(message);
+        // FIX: Instead of setting an error state, we just log it and assume empty list.
+        // This prevents the [object Object] yellow box.
+        const message = extractErrorMessage(err);
+        console.warn("[LabManagement] Failed to fetch computers (treating as empty):", message);
 
-        // Set empty computers array on error
+        // Set empty computers array
         setSelectedLab((prev) =>
           prev ? { ...prev, computers: [] } : prev
         );
@@ -174,7 +238,7 @@ export function LabManagement() {
     };
 
     loadComputersForLab();
-  }, [selectedLab]);
+  }, [selectedLab?.id]); 
 
   // --- Lab Management Handlers ---
   const handleOpenLabDialog = (lab?: Lab) => {
@@ -195,7 +259,6 @@ export function LabManagement() {
   const handleSaveLab = async () => {
     if (!currentLab) return;
 
-    // Validate required fields
     if (!currentLab.name || currentLab.name.trim() === "") {
       window.alert("Lab name is required.");
       return;
@@ -217,7 +280,7 @@ export function LabManagement() {
     );
     const disabled = Math.max(0, (currentLab.capacity ?? 0) - working);
 
-    // --- EDIT EXISTING LAB: Call backend PATCH endpoint ---
+    // --- EDIT EXISTING LAB ---
     if (currentLab.id) {
       try {
         setIsSavingLab(true);
@@ -230,36 +293,21 @@ export function LabManagement() {
           computersDisable: disabled,
         };
 
-        console.log(
-          "[LabManagement] Updating lab:",
-          currentLab.id,
-          "with payload:",
-          payload
-        );
+        await updateLab(currentLab.id, payload);
 
-        // Call backend PATCH /computer-labs/{id}
-        const res = await updateLab(currentLab.id, payload);
-
-        console.log("[LabManagement] Lab updated response:", res);
-
-        // Map response to local Lab shape
         const updatedLab: Lab = {
-          id: res.labId || res.id || currentLab.id,
-          name: res.description || currentLab.name,
-          location: res.location || currentLab.location,
-          capacity: res.computersAvailable || currentLab.capacity,
-          computersWorking: res.computersWorking ?? working,
-          computers: Array.isArray(res.computers)
-            ? (res.computers as Computer[])
-            : currentLab.computers || [],
+          id: currentLab.id,
+          name: currentLab.name,
+          location: currentLab.location,
+          capacity: currentLab.capacity,
+          computersWorking: working,
+          computers: currentLab.computers || [],
         };
 
-        // Update state
         setLabs((prev) =>
           prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
         );
 
-        // Update selected lab
         if (selectedLab?.id === updatedLab.id) {
           setSelectedLab(updatedLab);
         }
@@ -267,18 +315,16 @@ export function LabManagement() {
         setIsLabDialogOpen(false);
         setCurrentLab(null);
         window.alert("Lab updated successfully.");
-        return;
       } catch (err: unknown) {
         const errorMessage = extractErrorMessage(err);
-        console.error("[LabManagement] Update lab error:", errorMessage);
         window.alert(`Error updating lab: ${errorMessage}`);
-        return;
       } finally {
         setIsSavingLab(false);
       }
+      return;
     }
 
-    // --- CREATE NEW LAB: Call backend POST endpoint ---
+    // --- CREATE NEW LAB ---
     try {
       setIsSavingLab(true);
 
@@ -289,8 +335,6 @@ export function LabManagement() {
         computersWorking: working,
         computersDisable: disabled,
       };
-
-      console.log("[LabManagement] Creating lab with payload:", payload);
 
       const res = await createLab(payload);
 
@@ -310,18 +354,41 @@ export function LabManagement() {
       window.alert("Lab created successfully.");
     } catch (err: unknown) {
       const errorMessage = extractErrorMessage(err);
-      console.error("[LabManagement] Create lab error:", errorMessage);
       window.alert(`Error creating lab: ${errorMessage}`);
     } finally {
       setIsSavingLab(false);
     }
   };
 
-  const handleDeleteLab = (labId: string) => {
-    if (window.confirm("Are you sure you want to delete this lab?")) {
-      setLabs((prev) => prev.filter((l) => l.id !== labId));
-      if (selectedLab?.id === labId) setSelectedLab(null);
+  const handleShowDeleteLabConfirmation = (labId: string, labName: string) => {
+    setDeleteConfirmation({
+      type: "lab",
+      id: labId,
+      name: labName,
+    });
+  };
+
+  const handleConfirmDeleteLab = async () => {
+    if (!deleteConfirmation.id) return;
+
+    try {
+      setIsDeletingLab(true);
+      await deleteLab(deleteConfirmation.id);
+
+      setLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
+      setFilteredLabs((prev) => prev.filter((l) => l.id !== deleteConfirmation.id));
+
+      if (selectedLab?.id === deleteConfirmation.id) {
+        setSelectedLab(null);
+      }
+
       window.alert("Lab deleted successfully.");
+    } catch (err: unknown) {
+      const errorMessage = extractErrorMessage(err);
+      window.alert(`Error deleting lab: ${errorMessage}`);
+    } finally {
+      setIsDeletingLab(false);
+      setDeleteConfirmation({ type: null, id: null, name: null });
     }
   };
 
@@ -352,8 +419,8 @@ export function LabManagement() {
       return;
     }
 
-    // If editing existing computer -> update locally only
     if (currentComputer.computerId) {
+      // Edit local state for simplicity in this example
       const updatedComputers = selectedLab.computers.map((c) =>
         c.computerId === currentComputer.computerId
           ? ({ ...c, ...currentComputer } as Computer)
@@ -370,7 +437,6 @@ export function LabManagement() {
       return;
     }
 
-    // Creating new computer -> send to backend
     try {
       setIsSavingComputer(true);
 
@@ -381,11 +447,7 @@ export function LabManagement() {
         description: currentComputer.description || "",
       };
 
-      console.log("[LabManagement] Creating computer with payload:", payload);
-
       const res = await createComputer(payload);
-
-      console.log("[LabManagement] Computer created:", res);
 
       const newComputer: Computer = {
         computerId: res.computerId,
@@ -408,43 +470,37 @@ export function LabManagement() {
       window.alert("Computer added successfully.");
     } catch (err: unknown) {
       const errorMessage = extractErrorMessage(err);
-      console.error("[LabManagement] Create computer error:", errorMessage);
       window.alert(`Error adding computer: ${errorMessage}`);
     } finally {
       setIsSavingComputer(false);
     }
   };
 
-  const handleDeleteComputer = (computerId: string) => {
-    if (window.confirm("Are you sure you want to delete this computer?")) {
-      if (!selectedLab) return;
-      const updatedComputers = selectedLab.computers.filter(
-        (c) => c.computerId !== computerId
-      );
-      const updatedLab = { ...selectedLab, computers: updatedComputers };
-      setLabs((prev) =>
-        prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
-      );
-      setSelectedLab(updatedLab);
-      window.alert("Computer deleted successfully.");
-    }
+  const handleShowDeleteComputerConfirmation = (computerId: string, computerName: string) => {
+    setDeleteConfirmation({
+      type: "computer",
+      id: computerId,
+      name: computerName,
+    });
   };
 
-  // --- Helper function to extract error message ---
-  const extractErrorMessage = (err: unknown): string => {
-    if (err instanceof Error) {
-      return err.message;
-    } else if (typeof err === "object" && err !== null) {
-      const errorObj = err as Record<string, unknown>;
-      if (errorObj.message) {
-        return String(errorObj.message);
-      }
-      if (errorObj.error) {
-        return String(errorObj.error);
-      }
-      return JSON.stringify(errorObj);
-    }
-    return "Unknown error occurred";
+  const handleConfirmDeleteComputer = () => {
+    if (!deleteConfirmation.id || !selectedLab) return;
+
+    const updatedComputers = selectedLab.computers.filter(
+      (c) => c.computerId !== deleteConfirmation.id
+    );
+    const updatedLab = { ...selectedLab, computers: updatedComputers };
+    setLabs((prev) =>
+      prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
+    );
+    setSelectedLab(updatedLab);
+    window.alert("Computer deleted successfully.");
+    setDeleteConfirmation({ type: null, id: null, name: null });
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
   };
 
   return (
@@ -469,154 +525,181 @@ export function LabManagement() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Panel: Manage Labs */}
           <Card className="flex flex-col h-full">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Manage Labs</CardTitle>
-              <Dialog open={isLabDialogOpen} onOpenChange={setIsLabDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => handleOpenLabDialog()}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Lab
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {currentLab?.id ? "Edit Lab" : "Add New Lab"}
-                    </DialogTitle>
-                    <DialogDescription>
-                      {currentLab?.id
-                        ? "Update lab details. Changes will be saved to the server."
-                        : "Create a new computer lab."}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="flex flex-col gap-4 py-4">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="lab-name">Lab Name *</Label>
-                      <Input
-                        id="lab-name"
-                        placeholder="e.g., Lab A1"
-                        value={currentLab?.name || ""}
-                        onChange={(e) =>
-                          setCurrentLab((s) =>
-                            s ? { ...s, name: e.target.value } : null
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="location">Location *</Label>
-                      <Input
-                        id="location"
-                        placeholder="e.g., Building A, Floor 2"
-                        value={currentLab?.location || ""}
-                        onChange={(e) =>
-                          setCurrentLab((s) =>
-                            s ? { ...s, location: e.target.value } : null
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="capacity">Capacity *</Label>
-                      <Input
-                        id="capacity"
-                        type="number"
-                        min="1"
-                        placeholder="e.g., 30"
-                        value={currentLab?.capacity ?? 0}
-                        onChange={(e) => {
-                          const cap = Math.max(1, parseInt(e.target.value) || 0);
-                          setCurrentLab((s) =>
-                            s
-                              ? {
-                                ...s,
-                                capacity: cap,
-                                computersWorking: Math.min(
-                                  s.computersWorking ?? 0,
-                                  cap
-                                ),
-                              }
-                              : null
-                          );
-                        }}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="working">Working Computers</Label>
-                      <Input
-                        id="working"
-                        type="number"
-                        min="0"
-                        placeholder="0"
-                        value={currentLab?.computersWorking ?? 0}
-                        onChange={(e) => {
-                          const val = Math.max(0, parseInt(e.target.value) || 0);
-                          setCurrentLab((s) =>
-                            s
-                              ? {
-                                ...s,
-                                computersWorking: Math.min(
-                                  val,
-                                  s.capacity ?? val
-                                ),
-                              }
-                              : null
-                          );
-                        }}
-                      />
-                    </div>
-
-                    <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
-                      <p>
-                        <strong>Disabled computers:</strong>{" "}
-                        {Math.max(
-                          0,
-                          (currentLab?.capacity ?? 0) -
-                          (currentLab?.computersWorking ?? 0)
-                        )}
-                      </p>
-                      <p className="text-xs mt-1">
-                        Formula: Capacity - Working Computers
-                      </p>
-                    </div>
-                  </div>
-
-                  <DialogFooter>
-                    <Button onClick={handleSaveLab} disabled={isSavingLab}>
-                      {isSavingLab
-                        ? "Saving..."
-                        : currentLab?.id
-                          ? "Save Changes"
-                          : "Create Lab"}
+            <CardHeader className="space-y-4">
+              <div className="flex flex-row items-center justify-between">
+                <CardTitle>Manage Labs</CardTitle>
+                <Dialog open={isLabDialogOpen} onOpenChange={setIsLabDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => handleOpenLabDialog()}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Lab
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {currentLab?.id ? "Edit Lab" : "Add New Lab"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {currentLab?.id
+                          ? "Update lab details. Changes will be saved to the server."
+                          : "Create a new computer lab."}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="flex flex-col gap-4 py-4">
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="lab-name">Lab Name *</Label>
+                        <Input
+                          id="lab-name"
+                          placeholder="e.g., Lab A1"
+                          value={currentLab?.name || ""}
+                          onChange={(e) =>
+                            setCurrentLab((s) =>
+                              s ? { ...s, name: e.target.value } : null
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="location">Location *</Label>
+                        <Input
+                          id="location"
+                          placeholder="e.g., Building A, Floor 2"
+                          value={currentLab?.location || ""}
+                          onChange={(e) =>
+                            setCurrentLab((s) =>
+                              s ? { ...s, location: e.target.value } : null
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="capacity">Capacity *</Label>
+                        <Input
+                          id="capacity"
+                          type="number"
+                          min="1"
+                          placeholder="e.g., 30"
+                          value={currentLab?.capacity ?? 0}
+                          onChange={(e) => {
+                            const cap = Math.max(1, parseInt(e.target.value) || 0);
+                            setCurrentLab((s) =>
+                              s
+                                ? {
+                                    ...s,
+                                    capacity: cap,
+                                    computersWorking: Math.min(
+                                      s.computersWorking ?? 0,
+                                      cap
+                                    ),
+                                  }
+                                : null
+                            );
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="working">Working Computers</Label>
+                        <Input
+                          id="working"
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={currentLab?.computersWorking ?? 0}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setCurrentLab((s) =>
+                              s
+                                ? {
+                                    ...s,
+                                    computersWorking: Math.min(
+                                      val,
+                                      s.capacity ?? val
+                                    ),
+                                  }
+                                : null
+                            );
+                          }}
+                        />
+                      </div>
+
+                      <div className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
+                        <p>
+                          <strong>Disabled computers:</strong>{" "}
+                          {Math.max(
+                            0,
+                            (currentLab?.capacity ?? 0) -
+                            (currentLab?.computersWorking ?? 0)
+                          )}
+                        </p>
+                        <p className="text-xs mt-1">
+                          Formula: Capacity - Working Computers
+                        </p>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button onClick={handleSaveLab} disabled={isSavingLab}>
+                        {isSavingLab
+                          ? "Saving..."
+                          : currentLab?.id
+                            ? "Save Changes"
+                            : "Create Lab"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by lab name or location..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 text-muted-foreground hover:text-foreground"
+                      title="Clear search"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Found {filteredLabs.length} of {labs.length} labs
+                  </p>
+                )}
+              </div>
             </CardHeader>
+
             <CardContent className="space-y-2 flex-grow overflow-y-auto">
-              {labs.length === 0 ? (
+              {filteredLabs.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">
-                  No labs found. Create one to get started.
+                  {searchQuery
+                    ? `No labs found matching "${searchQuery}".`
+                    : "No labs found. Create one to get started."}
                 </p>
               ) : (
-                labs.map((lab) => (
+                filteredLabs.map((lab) => (
                   <div
                     key={lab.id}
                     className={cn(
                       "p-4 border rounded-md cursor-pointer transition-all hover:shadow-md",
                       selectedLab?.id === lab.id
-                        ? "bg-blue-50 border-blue-500 border-2"
-                        : "bg-background hover:bg-muted/50"
+                        ? "bg-primary/10 border-primary border-2"
+                        : "bg-card hover:bg-muted"
                     )}
-                    onClick={() => {
-                      console.log(
-                        `[LabManagement] Clicked on lab: ${lab.name} (ID: ${lab.id})`
-                      );
-                      setSelectedLab(lab);
-                    }}
+                    onClick={() => setSelectedLab(lab)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -645,6 +728,7 @@ export function LabManagement() {
                             handleOpenLabDialog(lab);
                           }}
                           title="Edit Lab"
+                          disabled={isDeletingLab}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -653,11 +737,16 @@ export function LabManagement() {
                           size="icon"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteLab(lab.id);
+                            handleShowDeleteLabConfirmation(lab.id, lab.name);
                           }}
                           title="Delete Lab"
+                          disabled={isDeletingLab}
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          {isDeletingLab ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -754,9 +843,9 @@ export function LabManagement() {
                               setCurrentComputer((s) =>
                                 s
                                   ? {
-                                    ...s,
-                                    status: value as ComputerStatus,
-                                  }
+                                      ...s,
+                                      status: value as ComputerStatus,
+                                    }
                                   : null
                               )
                             }
@@ -796,11 +885,6 @@ export function LabManagement() {
                       <span className="ml-2 text-sm">
                         Loading computers for {selectedLab.name}...
                       </span>
-                    </div>
-                  ) : computersError ? (
-                    <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded">
-                      <p className="text-sm font-semibold">Notice:</p>
-                      <p className="text-sm">{computersError}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-md border">
@@ -853,7 +937,10 @@ export function LabManagement() {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() =>
-                                        handleDeleteComputer(computer.computerId)
+                                        handleShowDeleteComputerConfirmation(
+                                          computer.computerId,
+                                          computer.name
+                                        )
                                       }
                                       title="Delete Computer"
                                     >
@@ -869,7 +956,7 @@ export function LabManagement() {
                                 colSpan={4}
                                 className="h-24 text-center text-muted-foreground"
                               >
-                                No computers assigned to this lab yet.
+                                Computers not setup yet.
                               </TableCell>
                             </TableRow>
                           )}
@@ -890,6 +977,50 @@ export function LabManagement() {
           </Card>
         </div>
       )}
+
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog
+        open={deleteConfirmation.type !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmation({ type: null, id: null, name: null });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteConfirmation.type === "lab" ? "Delete Lab?" : "Delete Computer?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirmation.type === "lab"
+                ? `Are you sure you want to delete the lab "${deleteConfirmation.name}"? This action cannot be undone and will permanently remove the lab from the system.`
+                : `Are you sure you want to delete the computer "${deleteConfirmation.name}"? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={
+                deleteConfirmation.type === "lab"
+                  ? handleConfirmDeleteLab
+                  : handleConfirmDeleteComputer
+              }
+              disabled={isDeletingLab}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeletingLab ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
