@@ -9,8 +9,8 @@ import { Sessions } from "./TabContents/Sessions";
 export default function Developer() {
    const menuItemsDeveloper = [
     { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
-    { title: "Database Test", url: "#", icon: "NewClaim", content: "Database Test" },
-    { title: "Sessions", url: "#", icon: "Scheduling", content: "Sessions" },
+    //{ title: "Database Test", url: "#", icon: "NewClaim", content: "Database Test" },
+    //{ title: "Sessions", url: "#", icon: "Scheduling", content: "Sessions" },
   ];
 
   return (
