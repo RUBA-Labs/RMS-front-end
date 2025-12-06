@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Monitor, Users, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Monitor, Users, CheckCircle, AlertTriangle , Cog } from "lucide-react";
 
-// UI Components (Assuming Shadcn UI / Tailwind structure)
+// UI Components
 import {
   Card,
   CardContent,
@@ -19,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Table,
   TableBody,
@@ -29,8 +27,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 
 // API Services
 import { retrieveAllLabs, LabDto } from "@/services/api/ComputerLabs/retrieve_all_labs";
@@ -38,9 +34,6 @@ import { retrieveLabSessionsByLabId, LabSessionDto } from "@/services/api/LabSes
 import { retrieveComputersFromLab, ComputerDto } from "@/services/api/Computers/retrive_computers_from_a_lab";
 import { retrieveAllLabBookings, BookingDetail } from "@/services/api/LabBooking/retrieve_all_lab_bookings";
 
-// --- Types ---
-// Ensuring strict typing for the visualization
-type ComputerStatus = 'functional' | 'faulty';
 
 // --- Sub-Component: Lab Visualization Map ---
 interface LabVisualizationProps {
@@ -50,8 +43,14 @@ interface LabVisualizationProps {
 }
 
 const LabVisualization = ({ computers, bookingDetails, loading }: LabVisualizationProps) => {
-  // Memoize sets for O(1) lookup time to prevent lag with many computers
-  const bookedComputerIds = useMemo(() => new Set(bookingDetails.map(b => b.computerId)), [bookingDetails]);
+  // FIX #1: Safely convert ID to string before trimming
+  const bookedComputerIds = useMemo(() => {
+    return new Set(
+      bookingDetails
+        .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "") 
+        .map(b => b.computerId)
+    );
+  }, [bookingDetails]);
 
   if (loading) {
     return <div className="h-64 flex items-center justify-center text-muted-foreground">Loading Map...</div>;
@@ -122,8 +121,6 @@ export function Reservation() {
 
   const [bookingDetails, setBookingDetails] = useState<BookingDetail[]>([]);
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-
   // Loading States
   const [loadingLabs, setLoadingLabs] = useState(true);
   const [loadingSessionData, setLoadingSessionData] = useState(false);
@@ -133,25 +130,15 @@ export function Reservation() {
   const currentLab = labs.find(l => l.id === selectedLabId);
   const currentSession = sessions.find(s => s.sessionId === selectedSessionId);
 
-  // Filter sessions for the Calendar list view
-  const sessionsOnSelectedDate = useMemo(() => {
-    if (!selectedDate || sessions.length === 0) return [];
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-
-    // NOTE: Adjust 'createdAt' or 'startTime' based on your actual API DTO date field
-    return sessions.filter(s => {
-      // Assuming ISO string "2023-10-25T14:00:00.000Z"
-      const sessionDate = s.startTime ? s.startTime.split('T')[0] : '';
-      return sessionDate === dateStr;
-    });
-  }, [sessions, selectedDate]);
-
   // Statistics for the currently selected session
   const sessionStats = useMemo(() => {
     if (!selectedSessionId) return { booked: 0, available: 0, capacity: 0 };
 
+    // FIX #2: Safely convert ID to string before trimming
+    const validBookings = bookingDetails.filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== ""); 
+    const bookedCount = validBookings.length;
+    
     const functionalComputers = computers.filter(c => c.status !== 'faulty').length;
-    const bookedCount = bookingDetails.length;
 
     return {
       booked: bookedCount,
@@ -168,7 +155,7 @@ export function Reservation() {
       try {
         const data = await retrieveAllLabs();
         setLabs(data);
-        if (data.length > 0) setSelectedLabId(data[0].id); // Auto-select first lab
+        if (data.length > 0) setSelectedLabId(data[0].id);
       } catch (error) {
         console.error("Error loading labs:", error);
       } finally {
@@ -191,9 +178,8 @@ export function Reservation() {
       setBookingDetails([]);
 
       try {
-        // Parallel fetch for efficiency
         const [sessionsData, computersData] = await Promise.all([
-          retrieveLabSessionsByLabId(selectedLabId).catch(() => []), // Catch empty sessions gracefully
+          retrieveLabSessionsByLabId(selectedLabId).catch(() => []),
           retrieveComputersFromLab(selectedLabId).catch(() => [])
         ]);
 
@@ -232,26 +218,88 @@ export function Reservation() {
     fetchBookings();
   }, [selectedSessionId]);
 
-
-  // --- Render ---
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-7xl">
 
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Lab Allocation Admin</h1>
-          <p className="text-muted-foreground">Manage first-year student bookings and visualize lab capacity.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Lab Booking Management</h1>
+          <p className="text-muted-foreground mt-2">Manage first-year student bookings and visualize lab capacity.</p>
         </div>
-
-
       </div>
-
-      
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-        {/* LEFT COLUMN: Map & Visualization (Takes up 2/3 width on large screens) */}
+        {/* LEFT COLUMN: Controls & Info */}
+        <div>
+          <Card className="border-2 h-full">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Cog className="h-5 w-5 text-primary" />
+                Instructions
+              </CardTitle>
+              <CardDescription>
+                Follow these steps to manage lab bookings effectively.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              
+              {/* Lab Selector Group */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Select Lab
+                </label>
+                <div className="w-full mt-2">
+                  <Select
+                    value={selectedLabId || ""}
+                    onValueChange={setSelectedLabId}
+                    disabled={loadingLabs}
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder="Select Lab" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {labs.map((lab) => (
+                        <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Session Selector Group */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Select Session
+                </label>
+                <div className="w-full mt-2">
+                  <Select
+                    value={selectedSessionId || ""}
+                    onValueChange={setSelectedSessionId}
+                    disabled={sessions.length === 0}
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue placeholder={sessions.length === 0 ? "No Sessions" : "Select Session to View"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sessions.map(s => (
+                        <SelectItem key={s.sessionId} value={s.sessionId}>
+                          {s.sessionName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {sessions.length === 0 && selectedLabId && (
+                     <p className="text-[0.8rem] text-muted-foreground mt-1">No sessions scheduled for this lab.</p>
+                  )}
+                </div>
+              </div>
+
+            </CardContent>
+          </Card>
+        </div>
+        {/* RIGHT COLUMN: Map & Visualization */}
         <div className="xl:col-span-2 space-y-6">
           <Card className="h-full border-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -263,44 +311,6 @@ export function Reservation() {
                 <CardDescription>
                   {currentLab?.name} • Capacity: {computers.length}
                 </CardDescription>
-              </div>
-
-              {/* Lab Selector (Top Level Control) */}
-              <div className="w-[250px]">
-                <Select
-                  value={selectedLabId || ""}
-                  onValueChange={setSelectedLabId}
-                  disabled={loadingLabs}
-                >
-                  <SelectTrigger className="h-12 text-lg">
-                    <SelectValue placeholder="Select Laboratory" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {labs.map((lab) => (
-                      <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Session Selector within Map Card */}
-              <div className="w-[250px]">
-                <Select
-                  value={selectedSessionId || ""}
-                  onValueChange={setSelectedSessionId}
-                  disabled={sessions.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={sessions.length === 0 ? "No Sessions" : "Select Session to View"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sessions.map(s => (
-                      <SelectItem key={s.sessionId} value={s.sessionId}>
-                        {s.sessionName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </CardHeader>
 
@@ -341,8 +351,6 @@ export function Reservation() {
             </CardContent>
           </Card>
         </div>
-
-
       </div>
 
       {/* BOTTOM SECTION: Detailed Table */}
@@ -350,7 +358,7 @@ export function Reservation() {
         <CardHeader>
           <CardTitle>Detailed Booking Roster</CardTitle>
           <CardDescription>
-            Showing {bookingDetails.length} students for session: <span className="font-semibold text-foreground">{currentSession?.sessionName || "None Selected"}</span>
+            Showing {sessionStats.booked} confirmed students for session: <span className="font-semibold text-foreground">{currentSession?.sessionName || "None Selected"}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -361,27 +369,30 @@ export function Reservation() {
                   <TableHead className="w-[150px]">Student ID</TableHead>
                   <TableHead>Session Name</TableHead>
                   <TableHead>Computer Name</TableHead>
-                  <TableHead>Lab Location</TableHead>
+                  <TableHead>Lab Name</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookingDetails.map((booking, idx) => (
-                  <TableRow key={booking.bookingId || idx}>
-                    <TableCell className="font-medium">{booking.bookedByUserId}</TableCell>
-                    <TableCell>{currentSession?.sessionName}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Monitor className="h-4 w-4 text-muted-foreground" />
-                        {booking.computerName}
-                      </div>
-                    </TableCell>
-                    <TableCell>{currentLab?.name}</TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="secondary">Confirmed</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {bookingDetails
+                  // FIX #3: Safely convert ID to string before trimming in the Table Loop
+                  .filter(booking => booking.bookedByUserId && String(booking.bookedByUserId).trim() !== "")
+                  .map((booking, idx) => (
+                    <TableRow key={booking.bookingId || idx}>
+                      <TableCell className="font-medium">{booking.bookedByUserId}</TableCell>
+                      <TableCell>{currentSession?.sessionName}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-4 w-4 text-muted-foreground" />
+                          {booking.computerName}
+                        </div>
+                      </TableCell>
+                      <TableCell>{currentLab?.name}</TableCell>
+                      <TableCell className="text-right">
+                         <Badge variant="secondary">Confirmed</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           ) : (
