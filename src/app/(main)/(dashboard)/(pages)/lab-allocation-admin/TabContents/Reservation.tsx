@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Monitor, Users, CheckCircle, AlertTriangle , Cog } from "lucide-react";
+import { Monitor, Users, CheckCircle, AlertTriangle, Cog, Table2 } from "lucide-react";
 
 // UI Components
 import {
@@ -47,7 +47,7 @@ const LabVisualization = ({ computers, bookingDetails, loading }: LabVisualizati
   const bookedComputerIds = useMemo(() => {
     return new Set(
       bookingDetails
-        .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "") 
+        .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "")
         .map(b => b.computerId)
     );
   }, [bookingDetails]);
@@ -135,9 +135,9 @@ export function Reservation() {
     if (!selectedSessionId) return { booked: 0, available: 0, capacity: 0 };
 
     // FIX #2: Safely convert ID to string before trimming
-    const validBookings = bookingDetails.filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== ""); 
+    const validBookings = bookingDetails.filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "");
     const bookedCount = validBookings.length;
-    
+
     const functionalComputers = computers.filter(c => c.status !== 'faulty').length;
 
     return {
@@ -244,7 +244,7 @@ export function Reservation() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {/* Lab Selector Group */}
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -291,7 +291,7 @@ export function Reservation() {
                     </SelectContent>
                   </Select>
                   {sessions.length === 0 && selectedLabId && (
-                     <p className="text-[0.8rem] text-muted-foreground mt-1">No sessions scheduled for this lab.</p>
+                    <p className="text-[0.8rem] text-muted-foreground mt-1">No sessions scheduled for this lab.</p>
                   )}
                 </div>
               </div>
@@ -356,7 +356,8 @@ export function Reservation() {
       {/* BOTTOM SECTION: Detailed Table */}
       <Card className="mt-8">
         <CardHeader>
-          <CardTitle>Detailed Booking Roster</CardTitle>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Table2 className="h-5 w-5 text-primary" /> Detailed Booking Roster </CardTitle>
           <CardDescription>
             Showing {sessionStats.booked} confirmed students for session: <span className="font-semibold text-foreground">{currentSession?.sessionName || "None Selected"}</span>
           </CardDescription>
@@ -389,7 +390,7 @@ export function Reservation() {
                       </TableCell>
                       <TableCell>{currentLab?.name}</TableCell>
                       <TableCell className="text-right">
-                         <Badge variant="secondary">Confirmed</Badge>
+                        <Badge variant="secondary">Confirmed</Badge>
                       </TableCell>
                     </TableRow>
                   ))}

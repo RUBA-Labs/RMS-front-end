@@ -49,6 +49,9 @@ import { deleteLab } from "@/services/api/ComputerLabs/delete_lab";
 import { retrieveAllLabs } from "@/services/api/ComputerLabs/retrieve_all_labs";
 import { createComputer } from "@/services/api/Computers/create_computer";
 import { retrieveComputersFromLab } from "@/services/api/Computers/retrive_computers_from_a_lab";
+import { updateComputer } from "@/services/api/Computers/update_computer";
+// IMPORT ADDED HERE
+import { deleteComputer } from "@/services/api/Computers/delete_computer";
 
 // --- Types ---
 type ComputerStatus = "functional" | "faulty";
@@ -419,24 +422,58 @@ export function LabManagement() {
       return;
     }
 
+    // --- UPDATE EXISTING COMPUTER ---
     if (currentComputer.computerId) {
-      // Edit local state for simplicity in this example
-      const updatedComputers = selectedLab.computers.map((c) =>
-        c.computerId === currentComputer.computerId
-          ? ({ ...c, ...currentComputer } as Computer)
-          : c
-      );
-      const updatedLab = { ...selectedLab, computers: updatedComputers };
-      setLabs((prev) =>
-        prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
-      );
-      setSelectedLab(updatedLab);
-      setIsComputerDialogOpen(false);
-      setCurrentComputer(null);
-      window.alert("Computer updated successfully.");
+      try {
+        setIsSavingComputer(true);
+
+        const payload = {
+          labId: selectedLab.id,
+          name: currentComputer.name,
+          status: currentComputer.status,
+          description: currentComputer.description || "",
+        };
+
+        const updatedRes = await updateComputer(currentComputer.computerId, payload);
+
+        // Convert response to Computer type
+        const updatedComputerLocal: Computer = {
+          computerId: updatedRes.computerId,
+          name: updatedRes.name,
+          status: updatedRes.status,
+          description: updatedRes.description,
+          labId: updatedRes.labId,
+          // Retain timestamps if API returns them, otherwise optional
+          createdAt: updatedRes.createdAt, 
+          updatedAt: updatedRes.updatedAt
+        };
+
+        const updatedComputers = selectedLab.computers.map((c) =>
+          c.computerId === updatedComputerLocal.computerId
+            ? updatedComputerLocal
+            : c
+        );
+        const updatedLab = { ...selectedLab, computers: updatedComputers };
+        
+        // Update Labs State
+        setLabs((prev) =>
+          prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
+        );
+        setSelectedLab(updatedLab);
+        
+        setIsComputerDialogOpen(false);
+        setCurrentComputer(null);
+        window.alert("Computer updated successfully.");
+      } catch (err: unknown) {
+        const errorMessage = extractErrorMessage(err);
+        window.alert(`Error updating computer: ${errorMessage}`);
+      } finally {
+        setIsSavingComputer(false);
+      }
       return;
     }
 
+    // --- CREATE NEW COMPUTER ---
     try {
       setIsSavingComputer(true);
 
@@ -484,19 +521,38 @@ export function LabManagement() {
     });
   };
 
-  const handleConfirmDeleteComputer = () => {
+  // UPDATED: Async function to delete computer via API
+  const handleConfirmDeleteComputer = async () => {
     if (!deleteConfirmation.id || !selectedLab) return;
 
-    const updatedComputers = selectedLab.computers.filter(
-      (c) => c.computerId !== deleteConfirmation.id
-    );
-    const updatedLab = { ...selectedLab, computers: updatedComputers };
-    setLabs((prev) =>
-      prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
-    );
-    setSelectedLab(updatedLab);
-    window.alert("Computer deleted successfully.");
-    setDeleteConfirmation({ type: null, id: null, name: null });
+    try {
+      // Use isDeletingLab state for loading indicator in the dialog
+      setIsDeletingLab(true);
+      
+      // 1. Call API
+      await deleteComputer(deleteConfirmation.id);
+
+      // 2. Update Local State
+      const updatedComputers = selectedLab.computers.filter(
+        (c) => c.computerId !== deleteConfirmation.id
+      );
+      const updatedLab = { ...selectedLab, computers: updatedComputers };
+      
+      // Update Main Lab List
+      setLabs((prev) =>
+        prev.map((l) => (l.id === updatedLab.id ? updatedLab : l))
+      );
+      // Update Selected View
+      setSelectedLab(updatedLab);
+      
+      window.alert("Computer deleted successfully.");
+    } catch (err: unknown) {
+      const errorMessage = extractErrorMessage(err);
+      window.alert(`Error deleting computer: ${errorMessage}`);
+    } finally {
+      setIsDeletingLab(false);
+      setDeleteConfirmation({ type: null, id: null, name: null });
+    }
   };
 
   const handleClearSearch = () => {

@@ -12,7 +12,7 @@ export default function LabAllocationAdmin() {
   const menuItemsLabAllocationAdmin = [
     { title: "Overview", url: "#", icon: "Overview", content: "Overview" },
     { title: "Lab Management", url: "#", icon: "LabManagement", content: "Lab Management" },
-    { title: "Lab Reservation", url: "#", icon: "LabBooking", content: "Lab Booking" },
+    { title: "Booking Management", url: "#", icon: "LabBooking", content: "Lab Booking" },
     { title: "Session Scheduling", url: "#", icon: "Scheduling", content: "Scheduling" },
 
   ];
@@ -21,7 +21,7 @@ export default function LabAllocationAdmin() {
     <DashboardPageProviders menuItems={menuItemsLabAllocationAdmin}>
       <div title="Overview"><Overview /></div>
       <div title="Lab Management"><LabManagement /></div>
-      <div title="Lab Reservation"><Reservation /></div>
+      <div title="Booking Management"><Reservation /></div>
       <div title="Session Scheduling"><Scheduling /></div>
 
     </DashboardPageProviders>

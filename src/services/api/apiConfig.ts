@@ -60,6 +60,8 @@ export const DELETE_EXAM_CLAIM_ITEM_API_URL_BY_ID = (claimId: number) => `${API_
 //computer module in the backend
 export const CREATE_A_NEW_COMPUTER_API_URL = `${API_BASE_URL}computers`;
 export const RETRIEVE_ALL_COMPUTERS_OF_A_LAB_API_URL = `${API_BASE_URL}computers`;
+export const UPDATE_A_COMPUTER_API_URL = `${API_BASE_URL}computers`;
+export const DELETE_A_COMPUTER_API_URL = `${API_BASE_URL}computers`;
 
 //lab session module in the backend
 export const CREATE_LAB_SESSION_API_URL = `${API_BASE_URL}lab-sessions`;
