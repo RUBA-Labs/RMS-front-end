@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Monitor, Users, CheckCircle, AlertTriangle, Cog, Table2 } from "lucide-react";
+import { Monitor, Users, CheckCircle, AlertTriangle, Table2, Search, Cog } from "lucide-react";
 
 // UI Components
 import {
@@ -27,13 +27,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input"; // Import Input component
 
 // API Services
 import { retrieveAllLabs, LabDto } from "@/services/api/ComputerLabs/retrieve_all_labs";
 import { retrieveLabSessionsByLabId, LabSessionDto } from "@/services/api/LabSessions/retrieve_lab_sessions_by_lab_id";
 import { retrieveComputersFromLab, ComputerDto } from "@/services/api/Computers/retrive_computers_from_a_lab";
-import { retrieveAllLabBookings, BookingDetail } from "@/services/api/LabBooking/retrieve_all_lab_bookings";
+import { retrieveAllLabBookings, BookingDetail } from "@/services/api/LabBooking/retrieve_all_lab_bookings_by_session_ID";
 
+// --- Types ---
+type ComputerStatus = 'functional' | 'faulty';
 
 // --- Sub-Component: Lab Visualization Map ---
 interface LabVisualizationProps {
@@ -47,7 +50,7 @@ const LabVisualization = ({ computers, bookingDetails, loading }: LabVisualizati
   const bookedComputerIds = useMemo(() => {
     return new Set(
       bookingDetails
-        .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "")
+        .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "") 
         .map(b => b.computerId)
     );
   }, [bookingDetails]);
@@ -121,6 +124,10 @@ export function Reservation() {
 
   const [bookingDetails, setBookingDetails] = useState<BookingDetail[]>([]);
 
+  // --- NEW STATE: Search/Filter for Table ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchType, setSearchType] = useState("studentId"); // 'studentId', 'sessionName', 'labName', 'computerName'
+
   // Loading States
   const [loadingLabs, setLoadingLabs] = useState(true);
   const [loadingSessionData, setLoadingSessionData] = useState(false);
@@ -135,9 +142,9 @@ export function Reservation() {
     if (!selectedSessionId) return { booked: 0, available: 0, capacity: 0 };
 
     // FIX #2: Safely convert ID to string before trimming
-    const validBookings = bookingDetails.filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "");
+    const validBookings = bookingDetails.filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== ""); 
     const bookedCount = validBookings.length;
-
+    
     const functionalComputers = computers.filter(c => c.status !== 'faulty').length;
 
     return {
@@ -146,6 +153,41 @@ export function Reservation() {
       capacity: computers.length
     };
   }, [selectedSessionId, computers, bookingDetails]);
+
+  // --- Filter Logic for Table ---
+  const filteredBookingList = useMemo(() => {
+    return bookingDetails
+      // 1. Filter out ghost records (no user ID)
+      .filter(b => b.bookedByUserId && String(b.bookedByUserId).trim() !== "")
+      // 2. Apply Search Filter
+      .filter((booking) => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+
+        if (searchType === "studentId") {
+          return String(booking.bookedByUserId).toLowerCase().includes(query);
+        } else if (searchType === "sessionName") {
+          return (currentSession?.sessionName || "").toLowerCase().includes(query);
+        } else if (searchType === "labName") {
+          return (currentLab?.name || "").toLowerCase().includes(query);
+        } else if (searchType === "computerName") {
+          // NEW FILTER ADDED HERE
+          return (booking.computerName || "").toLowerCase().includes(query);
+        }
+        return true;
+      });
+  }, [bookingDetails, searchQuery, searchType, currentSession, currentLab]);
+
+  // Helper to update placeholder based on dropdown
+  const getPlaceholder = () => {
+    switch(searchType) {
+      case "studentId": return "Search by Student ID...";
+      case "sessionName": return "Search by Session Name...";
+      case "labName": return "Search by Lab Name...";
+      case "computerName": return "Search by Computer Name..."; 
+      default: return "Search...";
+    }
+  };
 
   // --- Effects ---
 
@@ -225,30 +267,28 @@ export function Reservation() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Lab Booking Management</h1>
-          <p className="text-muted-foreground mt-2">Manage first-year student bookings and visualize lab capacity.</p>
+          <p className="text-muted-foreground">Manage first-year student bookings and visualize lab capacity.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
-        {/* LEFT COLUMN: Controls & Info */}
+        {/* COLUMN 1: Controls & Info (Left) */}
         <div>
           <Card className="border-2 h-full">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
-                <Cog className="h-5 w-5 text-primary" />
-                Instructions
-              </CardTitle>
+                <Cog className="h-5 w-5 text-primary" />Instructions</CardTitle>
               <CardDescription>
                 Follow these steps to manage lab bookings effectively.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-
+              
               {/* Lab Selector Group */}
-              <div className="space-y-2">
+              <div className="space-y-5">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Select Lab
+                  Select Lab :
                 </label>
                 <div className="w-full mt-2">
                   <Select
@@ -257,7 +297,7 @@ export function Reservation() {
                     disabled={loadingLabs}
                   >
                     <SelectTrigger className="h-10 w-full">
-                      <SelectValue placeholder="Select Lab" />
+                      <SelectValue placeholder="Select Laboratory" />
                     </SelectTrigger>
                     <SelectContent>
                       {labs.map((lab) => (
@@ -269,9 +309,9 @@ export function Reservation() {
               </div>
 
               {/* Session Selector Group */}
-              <div className="space-y-2">
+              <div className="space-y-5">
                 <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Select Session
+                  Select Session :
                 </label>
                 <div className="w-full mt-2">
                   <Select
@@ -291,7 +331,7 @@ export function Reservation() {
                     </SelectContent>
                   </Select>
                   {sessions.length === 0 && selectedLabId && (
-                    <p className="text-[0.8rem] text-muted-foreground mt-1">No sessions scheduled for this lab.</p>
+                     <p className="text-[0.8rem] text-muted-foreground mt-1">No sessions scheduled for this lab.</p>
                   )}
                 </div>
               </div>
@@ -299,7 +339,8 @@ export function Reservation() {
             </CardContent>
           </Card>
         </div>
-        {/* RIGHT COLUMN: Map & Visualization */}
+
+        {/* COLUMN 2: Map & Visualization (Right) */}
         <div className="xl:col-span-2 space-y-6">
           <Card className="h-full border-2">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -351,19 +392,57 @@ export function Reservation() {
             </CardContent>
           </Card>
         </div>
+
       </div>
 
       {/* BOTTOM SECTION: Detailed Table */}
       <Card className="mt-8">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <Table2 className="h-5 w-5 text-primary" /> Detailed Booking Roster </CardTitle>
+            <Table2 className="h-5 w-5 text-primary" /> Detailed Booking Roster
+          </CardTitle>
           <CardDescription>
-            Showing {sessionStats.booked} confirmed students for session: <span className="font-semibold text-foreground">{currentSession?.sessionName || "None Selected"}</span>
+            Showing {filteredBookingList.length} results.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {bookingDetails.length > 0 ? (
+          
+          {/* --- UI SEARCH BAR (UPDATED LAYOUT) --- */}
+          <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+            
+            {/* Field Selection Group */}
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <span className="text-sm font-medium whitespace-nowrap">Select Field :</span>
+              <div className="w-[200px]">
+                <Select value={searchType} onValueChange={setSearchType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Search by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="studentId">Student ID</SelectItem>
+                    <SelectItem value="computerName">Computer Name</SelectItem>
+                    <SelectItem value="sessionName">Session Name</SelectItem>
+                    <SelectItem value="labName">Lab Name</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Search Input Field */}
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={getPlaceholder()}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          {/* Table */}
+          {filteredBookingList.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -375,10 +454,7 @@ export function Reservation() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookingDetails
-                  // FIX #3: Safely convert ID to string before trimming in the Table Loop
-                  .filter(booking => booking.bookedByUserId && String(booking.bookedByUserId).trim() !== "")
-                  .map((booking, idx) => (
+                {filteredBookingList.map((booking, idx) => (
                     <TableRow key={booking.bookingId || idx}>
                       <TableCell className="font-medium">{booking.bookedByUserId}</TableCell>
                       <TableCell>{currentSession?.sessionName}</TableCell>
@@ -390,7 +466,7 @@ export function Reservation() {
                       </TableCell>
                       <TableCell>{currentLab?.name}</TableCell>
                       <TableCell className="text-right">
-                        <Badge variant="secondary">Confirmed</Badge>
+                         <Badge variant="secondary">Confirmed</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -398,7 +474,9 @@ export function Reservation() {
             </Table>
           ) : (
             <div className="text-center py-10 text-muted-foreground">
-              {selectedSessionId ? "No bookings found for this session." : "Select a session to view the booking roster."}
+              {selectedSessionId 
+                ? (searchQuery ? "No results found matching your search." : "No bookings found for this session.")
+                : "Select a session to view the booking roster."}
             </div>
           )}
         </CardContent>

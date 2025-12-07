@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 // Assuming these file paths are correct in your project structure:
 import { retrieveComputersFromLab, ComputerDto } from "@/services/api/Computers/retrive_computers_from_a_lab";
 import { retrieveAllLabSessions, LabSessionDto } from "@/services/api/LabSessions/retrieve_all_lab_sessions";
-import { retrieveAllLabBookings, LabBookingStatusResponse } from "@/services/api/LabBooking/retrieve_all_lab_bookings";
+import { retrieveAllLabBookings, LabBookingStatusResponse } from "@/services/api/LabBooking/retrieve_all_lab_bookings_by_session_ID";
 import { createLabBooking, LabBookingPayload } from "@/services/api/LabBooking/booking_a_lab_session"; 
 
 // --- Helper ---
